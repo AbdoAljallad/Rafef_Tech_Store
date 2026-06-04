@@ -1,0 +1,32 @@
+{
+  "invoice": {
+    "draft": "Черновик",
+    "approved": "Проведен",
+    "partially_paid": "Частично оплачен",
+    "paid": "Оплачен",
+    "partially_returned": "Частичный возврат",
+    "returned": "Возвращен",
+    "voided": "Аннулирован",
+    "replaced": "Заменен"
+  },
+  "repair": {
+    "new": "Новый",
+    "inspection": "Диагностика",
+    "waiting_customer_approval": "Ожидает согласования",
+    "waiting_part": "Ожидает запчасть",
+    "in_repair": "В ремонте",
+    "ready_for_delivery": "Готов к выдаче",
+    "delivered": "Выдан",
+    "cancelled": "Отменен"
+  },
+  "inventoryReservation": {
+    "active": "Активен",
+    "consumed": "Списан",
+    "released": "Освобожден",
+    "cancelled": "Отменен"
+  },
+  "inventoryPurchase": {
+    "draft": "Черновик",
+    "received": "Принята"
+  }
+}

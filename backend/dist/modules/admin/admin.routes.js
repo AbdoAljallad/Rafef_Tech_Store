@@ -1,0 +1,12 @@
+import { Router } from 'express';
+import { asyncHandler } from '../../shared/http/asyncHandler.js';
+import { requireAuth, requirePermission } from '../auth/auth.middleware.js';
+import { AdminService } from './admin.service.js';
+const router = Router();
+const admin = new AdminService();
+router.use(requireAuth);
+router.get('/admin/users', requirePermission('auth.users.view'), asyncHandler(async (_req, res) => res.json({ items: await admin.users() })));
+router.get('/admin/roles', requirePermission('auth.users.view'), asyncHandler(async (_req, res) => res.json({ items: await admin.roles() })));
+router.get('/admin/permissions', requirePermission('auth.permissions.manage'), asyncHandler(async (_req, res) => res.json({ items: await admin.permissions() })));
+router.get('/admin/settings', requirePermission('auth.users.view'), asyncHandler(async (_req, res) => res.json({ settings: admin.settings() })));
+export { router as adminRouter };

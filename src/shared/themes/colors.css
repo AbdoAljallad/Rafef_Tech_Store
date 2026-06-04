@@ -1,0 +1,15 @@
+:root {
+  color-scheme: light;
+  --color-page: #eef2f6;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f7f9fc;
+  --color-border: #d8e0ea;
+  --color-primary: #0b6bcb;
+  --color-primary-strong: #084f99;
+  --color-text: #172033;
+  --color-text-muted: #65738a;
+  --color-danger: #b42318;
+  --color-success: #206a3b;
+  --color-warning: #8a5a0a;
+  --shadow-panel: 0 18px 48px rgb(18 35 61 / 12%);
+}

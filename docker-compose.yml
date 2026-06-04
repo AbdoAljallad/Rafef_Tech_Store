@@ -1,0 +1,61 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: rafef-tech-mysql84
+    restart: unless-stopped
+    env_file:
+      - ./infrastructure/mysql/.env
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-time-zone=+00:00
+    ports:
+      - "3306:3306"
+    volumes:
+      - rafef_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  adminer:
+    image: adminer:5.4.0
+    container_name: rafef-tech-adminer
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+
+  frontend:
+    image: node:20-alpine
+    container_name: rafef-tech-frontend
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+    command: sh -c "npm ci --silent || npm install --no-audit --no-fund && npm run dev"
+
+  caddy:
+    image: caddy:latest
+    container_name: rafef-tech-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - frontend
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  rafef_mysql_data:
+  caddy_data:
+  caddy_config:
