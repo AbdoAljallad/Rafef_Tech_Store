@@ -36,12 +36,6 @@ pids
 /coverage
 /.nyc_output
 
-# Local environment files (ignore secrets; keep example)
-.env
-.env.local
-.env.*.local
-!.env.example
-
 # Editors and IDEs
 /.vscode/
 /.idea/

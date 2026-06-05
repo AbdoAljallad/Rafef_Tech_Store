@@ -22,7 +22,7 @@ function getAllowedOrigins() {
         .map((origin) => origin.trim())
         .filter(Boolean);
     if (env.NODE_ENV === 'development') {
-        origins.push('http://localhost:5173', 'http://127.0.0.1:5173');
+        origins.push('http://localhost:5173', 'http://127.0.0.1:5173', 'http://172.18.0.1:5173', 'http://169.254.83.107:5173', 'http://host.docker.internal:5173', 'http://172.18.96.1:5173', 'http://172.28.0.1:5173', 'http://192.168.1.100:5173');
     }
     return new Set(origins);
 }

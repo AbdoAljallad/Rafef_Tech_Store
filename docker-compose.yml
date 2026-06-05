@@ -30,6 +30,36 @@ services:
     ports:
       - "8080:8080"
 
+  backend:
+    image: node:20-alpine
+    container_name: rafef-tech-backend
+    restart: unless-stopped
+    working_dir: /app/backend
+    volumes:
+      - ./:/app
+      - /app/backend/node_modules
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      APP_BASE_URL: http://rafeftech.home
+      CORS_ORIGIN: http://rafeftech.home,http://localhost:5173,http://127.0.0.1:5173
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: rafef_user
+      MYSQL_PASSWORD: rafef_password
+      MYSQL_DATABASE: rafef_tech
+      SESSION_COOKIE_NAME: rt_session
+      SESSION_TTL_HOURS: 12
+      SESSION_SECRET: change-this-local-secret
+      SEED_ADMIN_USERNAME: admin
+      SEED_ADMIN_PASSWORD: admin123
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    command: sh -c "npm ci --silent || npm install --no-audit --no-fund && npm run db:setup && npm run dev"
+
   frontend:
     image: node:20-alpine
     container_name: rafef-tech-frontend
@@ -40,7 +70,9 @@ services:
       - /app/node_modules
     environment:
       CHOKIDAR_USEPOLLING: "true"
-    command: sh -c "npm ci --silent || npm install --no-audit --no-fund && npm run dev"
+      VITE_API_BASE_URL: ""
+      VITE_API_PROXY_TARGET: http://backend:3000
+    command: sh -c "npm ci --silent || npm install --no-audit --no-fund && npm run dev -- --host 0.0.0.0"
 
   caddy:
     image: caddy:latest
@@ -50,6 +82,7 @@ services:
       - "80:80"
     depends_on:
       - frontend
+      - backend
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

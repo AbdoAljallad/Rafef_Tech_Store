@@ -1,3 +1,4 @@
 rafeftech.home {
+    reverse_proxy /api/* backend:3000
     reverse_proxy frontend:5173
 }
