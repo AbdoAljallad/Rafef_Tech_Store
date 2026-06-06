@@ -65,6 +65,8 @@ services:
     container_name: rafef-tech-frontend
     restart: unless-stopped
     working_dir: /app
+    ports:
+      - "5173:5173"
     volumes:
       - ./:/app
       - /app/node_modules

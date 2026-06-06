@@ -830,6 +830,36 @@ textarea {
   gap: 1rem;
 }
 
+.row-actions {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 112px;
+}
+
+.permission-groups {
+  display: grid;
+  gap: 1rem;
+  max-height: min(60vh, 560px);
+  overflow: auto;
+  padding-right: 0.25rem;
+}
+
+.permission-group {
+  display: grid;
+  gap: 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+}
+
+.permission-group h3 {
+  margin: 0;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+}
+
 .search-input {
   display: flex;
   gap: 0.5rem;

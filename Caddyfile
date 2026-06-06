@@ -1,4 +1,4 @@
-rafeftech.home {
-    reverse_proxy /api/* backend:3000
-    reverse_proxy frontend:5173
+:80 {
+    reverse_proxy /api/* rafef-tech-backend:3000
+    reverse_proxy rafef-tech-frontend:5173
 }
