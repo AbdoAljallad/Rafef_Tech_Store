@@ -9,9 +9,23 @@ import type {
 } from '../types/crm.types';
 
 export const crmApi = {
-  listCustomers(search?: string) {
-    const params = search ? `?search=${encodeURIComponent(search)}` : '';
-    return httpClient.get<{ items: Customer[] }>(`/api/customers${params}`);
+  listCustomers(search?: string, pagination?: { page?: number; pageSize?: number }) {
+    const params = new URLSearchParams();
+
+    if (search) {
+      params.set('search', search);
+    }
+
+    if (pagination?.page) {
+      params.set('page', String(pagination.page));
+    }
+
+    if (pagination?.pageSize) {
+      params.set('pageSize', String(pagination.pageSize));
+    }
+
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return httpClient.get<{ items: Customer[] }>(`/api/customers${query}`);
   },
 
   createCustomer(payload: CustomerCreateRequest) {

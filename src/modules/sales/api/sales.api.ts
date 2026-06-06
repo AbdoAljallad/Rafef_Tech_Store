@@ -2,7 +2,9 @@ import { httpClient } from '../../../shared/api/httpClient';
 
 export const salesApi = {
   listInvoices(params?: { offset?: number; limit?: number }) {
-    const q = params ? `?offset=${params.offset ?? 0}&limit=${params.limit ?? 50}` : '';
+    const limit = params?.limit ?? 50;
+    const page = Math.floor((params?.offset ?? 0) / limit) + 1;
+    const q = params ? `?page=${page}&pageSize=${limit}` : '';
     return httpClient.get<{ items: any[] }>(`/api/sales/invoices${q}`);
   },
   createInvoice(payload: any) {

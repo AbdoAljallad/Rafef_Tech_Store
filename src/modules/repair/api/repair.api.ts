@@ -10,7 +10,9 @@ export const repairApi = {
   createDevice(payload: any) { return httpClient.post<{ device: any }>('/api/repair/devices', payload); },
 
   listOrders(params?: { offset?: number; limit?: number }) {
-    const q = params ? `?offset=${params.offset ?? 0}&limit=${params.limit ?? 20}` : '';
+    const limit = params?.limit ?? 20;
+    const page = Math.floor((params?.offset ?? 0) / limit) + 1;
+    const q = params ? `?page=${page}&pageSize=${limit}` : '';
     return httpClient.get<{ items: any[] }>(`/api/repair/orders${q}`);
   },
   createOrder(payload: any) { return httpClient.post<{ order: any }>('/api/repair/orders', payload); },

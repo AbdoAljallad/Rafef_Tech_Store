@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Bell } from 'lucide-react';
 import { useTickerEvents } from '../../../modules/events/hooks/useTickerEvents';
@@ -15,10 +16,10 @@ export function NotificationTicker() {
 
   return (
     <footer className="ticker-shell" aria-label={t('ticker.ariaLabel')}>
-      <div className="ticker-icon-block">
+      <Link className="ticker-icon-block" to="/events" aria-label="Открыть события">
         <Bell size={18} aria-hidden="true" />
         <span>Уведомления</span>
-      </div>
+      </Link>
       <div className="ticker-stream" aria-live="polite">
         {isLoading ? <span>{t('ticker.loading')}</span> : null}
         {isError ? <span>{t('ticker.unavailable')}</span> : null}

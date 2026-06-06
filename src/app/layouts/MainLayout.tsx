@@ -1,5 +1,4 @@
-import { Outlet } from 'react-router-dom';
-import { useLocation } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { AppHeader } from '../../shared/components/Header/AppHeader';
 import { ModuleNav } from '../../shared/components/Navigation/ModuleNav';
 import { NotificationTicker } from '../../shared/components/NotificationTicker/NotificationTicker';

@@ -1,6 +1,6 @@
-import { LogOut } from 'lucide-react';
+import { LogOut, UserRound } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../modules/auth/stores/authStore';
 import { avatars } from '../../assets/avatars';
 
@@ -62,15 +62,22 @@ export function UserCard({ isHomePage = false }: UserCardProps) {
           </div>
         ) : null}
       </div>
-      <button
-        className={isHomePage ? 'icon-button user-card-action' : 'icon-button'}
-        type="button"
-        onClick={handleLogout}
-        aria-label={t('auth:logout')}
-      >
-        <LogOut size={18} />
-        {isHomePage ? <span>Выйти</span> : null}
-      </button>
+      {isHomePage ? (
+        <div className="user-card-actions" aria-label="Действия профиля">
+          <Link className="icon-button user-card-action" to="/settings/users" aria-label="Открыть профиль">
+            <UserRound size={18} />
+            <span>Профиль</span>
+          </Link>
+          <button className="icon-button user-card-action logout" type="button" onClick={handleLogout} aria-label={t('auth:logout')}>
+            <LogOut size={18} />
+            <span>Выйти</span>
+          </button>
+        </div>
+      ) : (
+        <button className="icon-button" type="button" onClick={handleLogout} aria-label={t('auth:logout')}>
+          <LogOut size={18} />
+        </button>
+      )}
     </aside>
   );
 }
