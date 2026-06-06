@@ -53,6 +53,9 @@ services:
       SESSION_SECRET: change-this-local-secret
       SEED_ADMIN_USERNAME: admin
       SEED_ADMIN_PASSWORD: admin123
+      OPENCLAW_GATEWAY_URL: http://host.docker.internal:18790
+    extra_hosts:
+      - "host.docker.internal:172.20.0.1"
     depends_on:
       mysql:
         condition: service_healthy

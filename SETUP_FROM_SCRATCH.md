@@ -205,6 +205,51 @@ Rebuild/recreate containers:
 docker compose up -d --force-recreate
 ```
 
+## 8.1. Staging Server Auto Update
+
+On the staging server, this repository can be updated by:
+
+```bash
+sh scripts/deploy-staging.sh
+```
+
+The script:
+
+- fetches `origin/main`
+- resets tracked source files to `origin/main` when a new commit exists
+- rebuilds/restarts `backend`, `frontend`, and `caddy`
+- runs backend `db:setup`
+
+If a systemd timer is installed on the server, it can run this script every minute so a new `git push` is deployed automatically shortly after GitHub receives it.
+
+## 8.2. OpenClaw Integration Health
+
+The backend reads:
+
+```env
+OPENCLAW_GATEWAY_URL=http://host.docker.internal:18790
+```
+
+OpenClaw itself can stay on `127.0.0.1:18789`. On the staging server, expose it to Docker only through a host proxy bound to the project Docker bridge gateway `172.20.0.1:18790`:
+
+```bash
+sudo systemctl status openclaw-gateway.service
+sudo systemctl status openclaw-docker-proxy.service
+```
+
+Check from the host:
+
+```bash
+curl http://127.0.0.1:18789/health
+curl http://172.20.0.1:18790/health
+```
+
+Expected:
+
+```json
+{"ok":true,"status":"live"}
+```
+
 ## 9. Empty Database Or Missing Tables
 
 If login fails and logs show missing tables such as `auth_users`, run:
@@ -303,4 +348,3 @@ admin / admin123
 ```
 
 Then go to Settings / Administration and manage users/permissions.
-

@@ -17,5 +17,6 @@ const envSchema = z.object({
     SEED_ADMIN_USERNAME: z.string().default('admin'),
     SEED_ADMIN_PASSWORD: z.string().min(8).default('admin123'),
     N8N_WEBHOOK_URL: z.string().default(''),
+    OPENCLAW_GATEWAY_URL: z.string().default(''),
 });
 export const env = envSchema.parse(process.env);
