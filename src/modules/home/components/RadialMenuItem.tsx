@@ -9,22 +9,27 @@ type RadialMenuItemProps = {
   path: string;
   angle: number;
   radius: number;
+  index: number;
 };
 
-export function RadialMenuItem({ icon: Icon, itemKey, path, angle, radius }: RadialMenuItemProps) {
+export function RadialMenuItem({ icon: Icon, itemKey, path, angle, radius, index }: RadialMenuItemProps) {
   const { t } = useTranslation('modules');
   const x = Math.cos(angle) * radius;
   const y = Math.sin(angle) * radius;
+  const label = t(`navigation.${itemKey}`);
 
   return (
     <Link
-      aria-label={t(`navigation.${itemKey}`)}
+      aria-label={label}
       className="module-circle"
-      style={{ '--radial-x': `${x}px`, '--radial-y': `${y}px` } as CSSProperties}
+      style={{ '--radial-x': `${x}px`, '--radial-y': `${y}px`, '--item-delay': `${index * 55}ms` } as CSSProperties}
       to={path}
     >
-      <Icon size={25} aria-hidden="true" />
-      <span>{t(`navigation.${itemKey}`)}</span>
+      <span className="module-circle-status" aria-hidden="true" />
+      <span className="module-circle-icon">
+        <Icon size={27} aria-hidden="true" />
+      </span>
+      <span className="module-circle-label">{label}</span>
     </Link>
   );
 }

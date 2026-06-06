@@ -2,12 +2,20 @@ import { LogOut } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../modules/auth/stores/authStore';
+import { avatars } from '../../assets/avatars';
 
-export function UserCard() {
+type UserCardProps = {
+  isHomePage?: boolean;
+};
+
+export function UserCard({ isHomePage = false }: UserCardProps) {
   const { t } = useTranslation(['common', 'auth']);
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
+  const displayName = user?.displayName || t('common:user.guest');
+  const roleName = user?.role.nameRu || 'Доступ не назначен';
+  const initials = user?.avatarInitials || user?.displayName?.slice(0, 2).toUpperCase() || 'RT';
 
   async function handleLogout() {
     await logout();
@@ -15,17 +23,53 @@ export function UserCard() {
   }
 
   return (
-    <aside className="user-card">
-      <div className="avatar" aria-hidden="true">
-        {user?.avatarInitials || user?.displayName?.slice(0, 2).toUpperCase() || 'RT'}
+    <aside className={isHomePage ? 'user-card home-profile-card' : 'user-card'}>
+      <div className={isHomePage ? 'avatar home-avatar' : 'avatar'} aria-hidden="true">
+        <span>{initials}</span>
+        {isHomePage ? (
+          <img
+            src={avatars.manager}
+            alt=""
+            onError={(event) => {
+              event.currentTarget.hidden = true;
+            }}
+          />
+        ) : null}
+        {isHomePage ? <b className="home-avatar-status" /> : null}
       </div>
       <div className="user-card-body">
         <p className="eyebrow">{t('common:user.current')}</p>
-        <strong>{user?.displayName || t('common:user.guest')}</strong>
-        <small>{user?.role.nameRu || ''}</small>
+        <strong>{displayName}</strong>
+        {isHomePage ? <span className="user-role-badge">{roleName}</span> : <small>{roleName}</small>}
+        {isHomePage ? (
+          <div className="user-card-meta" aria-label="Состояние смены и доступа">
+            <span className="user-online-row">
+              <i aria-hidden="true" />
+              Онлайн
+            </span>
+            <span>
+              <em>Смена</em>
+              <strong>Активна</strong>
+            </span>
+            <span>
+              <em>Отдел</em>
+              <strong>Управление</strong>
+            </span>
+            <span>
+              <em>Доступ</em>
+              <strong>{roleName}</strong>
+            </span>
+          </div>
+        ) : null}
       </div>
-      <button className="icon-button" type="button" onClick={handleLogout} aria-label={t('auth:logout')}>
+      <button
+        className={isHomePage ? 'icon-button user-card-action' : 'icon-button'}
+        type="button"
+        onClick={handleLogout}
+        aria-label={t('auth:logout')}
+      >
         <LogOut size={18} />
+        {isHomePage ? <span>Выйти</span> : null}
       </button>
     </aside>
   );

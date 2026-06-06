@@ -12,13 +12,13 @@ export function MainLayout() {
   const isHomePage = location.pathname === '/home' || location.pathname === '/';
 
   return (
-    <div className="app-shell">
+    <div className={isHomePage ? 'app-shell home-shell' : 'app-shell'}>
       <SkipLink />
       <DevModeBadge />
-      <AppHeader />
+      {!isHomePage ? <AppHeader /> : null}
       <div className={isHomePage ? 'app-body home' : 'app-body'}>
         <aside className="left-panel" aria-label="Панель пользователя">
-          <UserCard />
+          <UserCard isHomePage={isHomePage} />
           {!isHomePage ? <ModuleNav /> : null}
         </aside>
         <main className={isHomePage ? 'app-content home-content' : 'app-content'} id="main-content" tabIndex={-1}>

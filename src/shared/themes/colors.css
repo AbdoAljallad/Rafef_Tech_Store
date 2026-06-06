@@ -12,4 +12,19 @@
   --color-success: #206a3b;
   --color-warning: #8a5a0a;
   --shadow-panel: 0 18px 48px rgb(18 35 61 / 12%);
+  --home-bg-start: #f9fdff;
+  --home-bg-mid: #edf7ff;
+  --home-bg-end: #e8f3ff;
+  --home-surface-glass: rgb(255 255 255 / 76%);
+  --home-surface-raised: #f8fcff;
+  --home-surface-card: rgb(255 255 255 / 68%);
+  --home-border: rgb(102 173 230 / 28%);
+  --home-blue: #0878d7;
+  --home-blue-soft: #42a5ff;
+  --home-text: #10223c;
+  --home-muted: #63748d;
+  --home-glow: rgb(47 147 255 / 34%);
+  --home-grid-line: rgb(54 137 217 / 8%);
+  --home-shadow-soft: 18px 22px 46px rgb(46 103 153 / 16%), -14px -14px 34px rgb(255 255 255 / 90%);
+  --home-shadow-hover: 20px 26px 54px rgb(25 107 183 / 22%), -16px -16px 38px rgb(255 255 255 / 95%);
 }
