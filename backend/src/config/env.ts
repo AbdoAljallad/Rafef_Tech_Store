@@ -18,7 +18,11 @@ const envSchema = z.object({
   SESSION_SECRET: z.string().min(12).default('change-this-local-secret'),
   SEED_ADMIN_USERNAME: z.string().default('admin'),
   SEED_ADMIN_PASSWORD: z.string().min(8).default('admin123'),
+  SEED_AI_ASSISTANT_PASSWORD: z.string().default(''),
   N8N_WEBHOOK_URL: z.string().default(''),
+  N8N_HEALTH_URL: z.string().default(''),
+  N8N_SHARED_SECRET: z.string().default(''),
+  INTEGRATION_HTTP_TIMEOUT_MS: z.coerce.number().int().positive().default(3000),
   OPENCLAW_GATEWAY_URL: z.string().default(''),
 });
 

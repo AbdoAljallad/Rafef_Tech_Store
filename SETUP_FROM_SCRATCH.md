@@ -222,13 +222,27 @@ The script:
 
 If a systemd timer is installed on the server, it can run this script every minute so a new `git push` is deployed automatically shortly after GitHub receives it.
 
-## 8.2. OpenClaw Integration Health
+## 8.2. n8n And OpenClaw Integration
 
-The backend reads:
+The backend reads these variables:
 
 ```env
+SEED_AI_ASSISTANT_PASSWORD=change-this-ai-assistant-password
+N8N_WEBHOOK_URL=http://host.docker.internal:5678/webhook/rafef-tech
+N8N_HEALTH_URL=http://host.docker.internal:5678/healthz
+N8N_SHARED_SECRET=change-this-n8n-secret
 OPENCLAW_GATEWAY_URL=http://host.docker.internal:18790
+INTEGRATION_HTTP_TIMEOUT_MS=3000
 ```
+
+OpenClaw must use the dedicated backend account:
+
+```text
+username: ai_assistant
+password: value of SEED_AI_ASSISTANT_PASSWORD
+```
+
+This user is API-only and receives restricted assistant/integration permissions. If `SEED_AI_ASSISTANT_PASSWORD` is empty, the seeded `ai_assistant` account stays disabled.
 
 OpenClaw itself can stay on `127.0.0.1:18789`. On the staging server, expose it to Docker only through a host proxy bound to the project Docker bridge gateway `172.20.0.1:18790`:
 
@@ -244,10 +258,26 @@ curl http://127.0.0.1:18789/health
 curl http://172.20.0.1:18790/health
 ```
 
+For n8n:
+
+- Create an active workflow with a webhook trigger at `/webhook/rafef-tech`.
+- Read `X-Rafef-Integration-Secret` and compare it with `N8N_SHARED_SECRET`.
+- Rafef Tech sends queued events to `N8N_WEBHOOK_URL`.
+- n8n can send callbacks to Rafef Tech at `POST /api/integrations/n8n/inbound` with the same `X-Rafef-Integration-Secret` header.
+
+Useful checks after login as admin:
+
+```bash
+curl http://localhost:5173/api/health
+curl -b cookie.txt http://localhost:5173/api/integrations/health
+curl -b cookie.txt -X POST http://localhost:5173/api/integrations/n8n/test
+curl -b cookie.txt -X POST http://localhost:5173/api/integrations/webhook-outbox/process
+```
+
 Expected:
 
 ```json
-{"ok":true,"status":"live"}
+{"key":"openclaw","status":"ok"}
 ```
 
 ## 9. Empty Database Or Missing Tables

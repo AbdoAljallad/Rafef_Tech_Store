@@ -8,7 +8,7 @@ async function checkOpenClaw() {
     }
     try {
         const response = await fetch(new URL('/health', env.OPENCLAW_GATEWAY_URL), {
-            signal: AbortSignal.timeout(3000),
+            signal: AbortSignal.timeout(env.INTEGRATION_HTTP_TIMEOUT_MS),
         });
         return {
             key: 'openclaw',
@@ -18,6 +18,28 @@ async function checkOpenClaw() {
     }
     catch {
         return { key: 'openclaw', status: 'error', gatewayConfigured: true };
+    }
+}
+async function checkN8n() {
+    if (!env.N8N_WEBHOOK_URL && !env.N8N_HEALTH_URL) {
+        return { key: 'n8n', status: 'not_configured', webhookConfigured: false, healthConfigured: false };
+    }
+    if (!env.N8N_HEALTH_URL) {
+        return { key: 'n8n', status: 'configured', webhookConfigured: Boolean(env.N8N_WEBHOOK_URL), healthConfigured: false };
+    }
+    try {
+        const response = await fetch(env.N8N_HEALTH_URL, {
+            signal: AbortSignal.timeout(env.INTEGRATION_HTTP_TIMEOUT_MS),
+        });
+        return {
+            key: 'n8n',
+            status: response.ok ? 'ok' : 'error',
+            webhookConfigured: Boolean(env.N8N_WEBHOOK_URL),
+            healthConfigured: true,
+        };
+    }
+    catch {
+        return { key: 'n8n', status: 'error', webhookConfigured: Boolean(env.N8N_WEBHOOK_URL), healthConfigured: true };
     }
 }
 export class IntegrationsService {
@@ -38,7 +60,7 @@ export class IntegrationsService {
         return {
             services: [
                 { key: 'database', status: database },
-                { key: 'n8n', status: env.N8N_WEBHOOK_URL ? 'configured' : 'not_configured', webhookConfigured: Boolean(env.N8N_WEBHOOK_URL) },
+                await checkN8n(),
                 await checkOpenClaw(),
                 { key: 'webhook_outbox', ...(await this.worker.status()) },
             ],
@@ -46,5 +68,30 @@ export class IntegrationsService {
     }
     outbox() {
         return this.repo.listOutbox();
+    }
+    async enqueueN8nTest(actorUserId) {
+        const id = await this.repo.createOutbox({
+            target: 'n8n',
+            webhookUrl: env.N8N_WEBHOOK_URL || null,
+            eventType: 'integration.test',
+            payload: {
+                source: 'rafef-tech',
+                message: 'Rafef Tech n8n integration test',
+                createdAt: new Date().toISOString(),
+            },
+            createdByUserId: actorUserId,
+        });
+        return { id, delivery: await this.worker.processPending(1) };
+    }
+    processOutbox(limit) {
+        return this.worker.processPending(limit);
+    }
+    acceptN8nInbound(input) {
+        return {
+            accepted: true,
+            source: 'n8n',
+            receivedAt: new Date().toISOString(),
+            payload: input,
+        };
     }
 }

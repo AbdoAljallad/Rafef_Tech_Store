@@ -53,6 +53,10 @@ services:
       SESSION_SECRET: change-this-local-secret
       SEED_ADMIN_USERNAME: admin
       SEED_ADMIN_PASSWORD: admin123
+      SEED_AI_ASSISTANT_PASSWORD: change-this-ai-assistant-password
+      N8N_WEBHOOK_URL: http://host.docker.internal:5678/webhook/rafef-tech
+      N8N_HEALTH_URL: http://host.docker.internal:5678/healthz
+      N8N_SHARED_SECRET: change-this-n8n-secret
       OPENCLAW_GATEWAY_URL: http://host.docker.internal:18790
     extra_hosts:
       - "host.docker.internal:172.20.0.1"

@@ -122,10 +122,22 @@ async function seedAdminUser() {
 }
 async function seedAiAssistantUser() {
     const roleId = await getRoleId('AI_ASSISTANT');
-    const passwordHash = await bcrypt.hash(`disabled-${Date.now()}`, 12);
+    const hasConfiguredPassword = env.SEED_AI_ASSISTANT_PASSWORD.length >= 8;
+    const passwordHash = await bcrypt.hash(hasConfiguredPassword ? env.SEED_AI_ASSISTANT_PASSWORD : `disabled-${Date.now()}`, 12);
+    const status = hasConfiguredPassword ? 'active' : 'disabled';
     await pool.execute(`INSERT INTO auth_users (role_id, username, password_hash, display_name, status, max_discount_percent)
-     VALUES (?, 'ai_assistant', ?, 'AI Assistant', 'disabled', 0)
-     ON DUPLICATE KEY UPDATE role_id = VALUES(role_id), display_name = VALUES(display_name), status = 'disabled'`, [roleId, passwordHash]);
+     VALUES (?, 'ai_assistant', ?, 'AI Assistant', ?, 0)
+     ON DUPLICATE KEY UPDATE role_id = VALUES(role_id), password_hash = VALUES(password_hash), display_name = VALUES(display_name), status = VALUES(status)`, [roleId, passwordHash, status]);
+    const [users] = await pool.execute('SELECT id FROM auth_users WHERE username = ?', ['ai_assistant']);
+    const user = users[0];
+    if (!user)
+        return;
+    const [permissionRows] = await pool.execute(`SELECT id, code FROM auth_permissions WHERE code IN ('ai.assistant.use', 'events.view', 'integrations.view')`);
+    for (const permission of permissionRows) {
+        await pool.execute(`INSERT INTO auth_user_permissions (user_id, permission_id, is_allowed)
+       VALUES (?, ?, TRUE)
+       ON DUPLICATE KEY UPDATE is_allowed = TRUE`, [user.id, permission.id]);
+    }
 }
 async function seedUnits() {
     const units = [
@@ -238,7 +250,7 @@ try {
     await upsertRole('AI_ASSISTANT', 'AI ассистент', 'Restricted API-only assistant role');
     await seedPermissions();
     await assignRoleDefaults('OWNER_ADMIN', permissions.map((permission) => permission.code));
-    await assignRoleDefaults('AI_ASSISTANT', ['ai.assistant.use', 'events.view']);
+    await assignRoleDefaults('AI_ASSISTANT', ['ai.assistant.use', 'events.view', 'integrations.view']);
     await seedAdminUser();
     await seedAiAssistantUser();
     await seedUnits();
