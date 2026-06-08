@@ -5,6 +5,7 @@ import { NotificationTicker } from '../../shared/components/NotificationTicker/N
 import { UserCard } from '../../shared/components/Sidebar/UserCard';
 import { SkipLink } from '../../shared/components/SkipLink/SkipLink';
 import { DevModeBadge } from '../../shared/components/DevModeBadge/DevModeBadge';
+import { SystemControls } from '../../shared/components/SystemControls/SystemControls';
 
 export function MainLayout() {
   const location = useLocation();
@@ -14,6 +15,7 @@ export function MainLayout() {
     <div className={isHomePage ? 'app-shell home-shell' : 'app-shell'}>
       <SkipLink />
       <DevModeBadge />
+      <SystemControls />
       {!isHomePage ? <AppHeader /> : null}
       <div className={isHomePage ? 'app-body home' : 'app-body'}>
         <aside className="left-panel" aria-label="Панель пользователя">
