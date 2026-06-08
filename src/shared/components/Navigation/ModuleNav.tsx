@@ -13,7 +13,8 @@ function ModuleNavLink({ item }: { item: (typeof MODULE_NAV_ITEMS)[number] }) {
 
   return (
     <NavLink className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')} to={item.path}>
-      {t(`navigation.${item.key}`)}
+      <span className="nav-link-indicator" aria-hidden="true" />
+      <span>{t(`navigation.${item.key}`)}</span>
     </NavLink>
   );
 }
@@ -23,6 +24,7 @@ export function ModuleNav() {
 
   return (
     <nav className="module-nav" aria-label={t('main.ariaLabel')}>
+      <span className="module-nav-title">Навигация</span>
       {MODULE_NAV_ITEMS.map((item) => (
         <ModuleNavLink key={item.key} item={item} />
       ))}

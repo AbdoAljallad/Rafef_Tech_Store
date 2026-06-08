@@ -16,9 +16,12 @@ export function FormDrawer({ title, isOpen, onClose, children }: FormDrawerProps
 
   return (
     <div className="drawer-backdrop" role="presentation">
-      <aside className="form-drawer" aria-label={title}>
+      <aside className="form-drawer" role="dialog" aria-modal="true" aria-label={title}>
         <header className="drawer-header">
-          <h2>{title}</h2>
+          <div>
+            <span className="tech-pill drawer-section-label">CRM</span>
+            <h2>{title}</h2>
+          </div>
           <IconButton label="Закрыть" icon={<X size={18} />} onClick={onClose} />
         </header>
         {children}

@@ -27,4 +27,18 @@
   --home-grid-line: rgb(54 137 217 / 8%);
   --home-shadow-soft: 18px 22px 46px rgb(46 103 153 / 16%), -14px -14px 34px rgb(255 255 255 / 90%);
   --home-shadow-hover: 20px 26px 54px rgb(25 107 183 / 22%), -16px -16px 38px rgb(255 255 255 / 95%);
+  --tech-bg-start: var(--home-bg-start);
+  --tech-bg-mid: var(--home-bg-mid);
+  --tech-bg-end: var(--home-bg-end);
+  --tech-surface-glass: var(--home-surface-glass);
+  --tech-surface-card: var(--home-surface-card);
+  --tech-border: var(--home-border);
+  --tech-accent: var(--home-blue);
+  --tech-accent-soft: var(--home-blue-soft);
+  --tech-text: var(--home-text);
+  --tech-muted: var(--home-muted);
+  --tech-glow: var(--home-glow);
+  --tech-grid-line: var(--home-grid-line);
+  --tech-shadow-soft: var(--home-shadow-soft);
+  --tech-shadow-hover: var(--home-shadow-hover);
 }
