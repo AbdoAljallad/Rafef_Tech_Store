@@ -3020,7 +3020,7 @@ textarea {
 .customers-empty-state p,
 .customer-card-row {
   margin: 0;
-  color: var(--color-muted);
+  color: var(--color-text-muted);
 }
 
 .customers-primary-action,
@@ -3119,6 +3119,7 @@ textarea {
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(235, 248, 255, 0.78)),
     radial-gradient(circle at 14% 16%, rgba(14, 165, 233, 0.16), transparent 30%);
+  color: var(--color-text);
   cursor: pointer;
   transition:
     transform 180ms ease,
@@ -3208,6 +3209,7 @@ textarea {
   align-items: center;
   gap: 0.5rem;
   min-width: 0;
+  color: var(--color-text-muted);
   font-size: 0.92rem;
 }
 
