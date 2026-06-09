@@ -2507,7 +2507,16 @@ textarea {
 
 .drawer-backdrop {
   justify-content: end;
+  align-items: stretch;
   padding: clamp(0.6rem, 1.5vw, 1rem);
+}
+
+.drawer-scrim {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
 }
 
 .form-drawer,
@@ -2523,6 +2532,8 @@ textarea {
 }
 
 .form-drawer {
+  position: relative;
+  z-index: 1;
   display: grid;
   width: min(100vw - 1.2rem, 620px);
   max-height: min(100%, calc(100vh - 1.2rem));
@@ -3084,6 +3095,21 @@ textarea {
   gap: 1rem;
 }
 
+.customers-list-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.customers-list-controls .ui-field {
+  min-width: 132px;
+}
+
+.customers-list-controls .ui-field > span {
+  display: none;
+}
+
 .customers-list-header > div {
   display: grid;
   gap: 0.45rem;
@@ -3099,6 +3125,24 @@ textarea {
   color: var(--color-primary-strong);
   font-weight: 700;
   background: rgba(255, 255, 255, 0.72);
+}
+
+.customers-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.35rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(125, 211, 252, 0.24);
+}
+
+.customers-pagination-status {
+  min-width: 120px;
+  color: var(--color-text-muted);
+  font-size: 0.94rem;
+  font-weight: 700;
+  text-align: center;
 }
 
 .customers-card-grid {
@@ -3323,6 +3367,12 @@ textarea {
   .customers-count {
     width: 100%;
     justify-content: center;
+  }
+
+  .customers-list-controls,
+  .customers-pagination {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
 

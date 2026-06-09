@@ -25,7 +25,15 @@ export const crmApi = {
     }
 
     const query = params.toString() ? `?${params.toString()}` : '';
-    return httpClient.get<{ items: Customer[] }>(`/api/customers${query}`);
+    return httpClient.get<{
+      items: Customer[];
+      meta: {
+        page: number;
+        pageSize: number;
+        total: number;
+        totalPages: number;
+      };
+    }>(`/api/customers${query}`);
   },
 
   createCustomer(payload: CustomerCreateRequest) {

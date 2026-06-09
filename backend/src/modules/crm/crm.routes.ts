@@ -15,13 +15,21 @@ router.get(
   '/customers',
   requirePermission('crm.customers.view'),
   asyncHandler(async (request, response) => {
-    const { pageSize, offset } = parsePagination(request.query);
-    const customers = await crmService.listCustomers({
+    const { page, pageSize, offset } = parsePagination(request.query);
+    const result = await crmService.listCustomers({
       search: typeof request.query.search === 'string' ? request.query.search : undefined,
       offset,
       limit: pageSize,
     });
-    response.json({ items: customers });
+    response.json({
+      items: result.items,
+      meta: {
+        page,
+        pageSize,
+        total: result.total,
+        totalPages: Math.max(1, Math.ceil(result.total / pageSize)),
+      },
+    });
   }),
 );
 

@@ -9,8 +9,13 @@ export class CrmService {
     private readonly auditService = new AuditService(),
   ) {}
 
-  listCustomers(params: { search?: string; offset: number; limit: number }) {
-    return this.crmRepository.listCustomers(params);
+  async listCustomers(params: { search?: string; offset: number; limit: number }) {
+    const [items, total] = await Promise.all([
+      this.crmRepository.listCustomers(params),
+      this.crmRepository.countCustomers({ search: params.search }),
+    ]);
+
+    return { items, total };
   }
 
   async getCustomer(id: number) {

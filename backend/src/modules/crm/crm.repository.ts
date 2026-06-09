@@ -43,6 +43,27 @@ export class CrmRepository {
     return rows;
   }
 
+  async countCustomers(params: { search?: string }) {
+    const search = params.search?.trim();
+    const values: Array<string | number> = [];
+    let where = 'WHERE c.is_active = TRUE';
+
+    if (search) {
+      where += ' AND (c.name LIKE ? OR c.phone_primary LIKE ? OR c.phone_secondary LIKE ? OR c.customer_code LIKE ?)';
+      const like = `%${search}%`;
+      values.push(like, like, like, like);
+    }
+
+    const [rows] = await pool.execute<Array<RowDataPacket & { total: number }>>(
+      `SELECT COUNT(*) AS total
+       FROM crm_customers c
+       ${where}`,
+      values,
+    );
+
+    return Number(rows[0]?.total ?? 0);
+  }
+
   async findCustomerById(id: number) {
     const [rows] = await pool.execute<CustomerRow[]>('SELECT * FROM crm_customers WHERE id = ? LIMIT 1', [id]);
     return rows[0] ?? null;
