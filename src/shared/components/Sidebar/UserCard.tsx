@@ -59,7 +59,7 @@ export function UserCard({ isHomePage = false }: UserCardProps) {
 
       {isHomePage ? (
         <div className="user-card-actions" aria-label="Действия профиля">
-          <Link className="icon-button user-card-action" to="/settings/users" aria-label="Открыть профиль">
+          <Link className="icon-button user-card-action" to="/settings/profile" aria-label="Открыть профиль">
             <UserRound size={18} />
             <span>Профиль</span>
           </Link>

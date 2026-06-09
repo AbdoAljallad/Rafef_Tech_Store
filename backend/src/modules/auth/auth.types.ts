@@ -12,6 +12,22 @@ export type AuthenticatedUser = {
   permissions: string[];
   maxDiscountPercent: number | null;
   avatarUrl?: string | null;
+  lastLoginAt?: string | null;
+};
+
+export type UserActivityEntry = {
+  id: number;
+  actionCode: string;
+  module: string;
+  entityType: string | null;
+  entityId: number | null;
+  createdAt: string;
+  ipAddress: string | null;
+};
+
+export type UserProfile = AuthenticatedUser & {
+  status: 'active' | 'disabled' | 'locked';
+  recentActivity: UserActivityEntry[];
 };
 
 export type LoginResult = {

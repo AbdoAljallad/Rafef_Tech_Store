@@ -65,6 +65,72 @@ export class AuthService {
             user: this.mapUser(userRow, permissions),
         };
     }
+    async getOwnProfile(userId) {
+        const userRow = await this.authRepository.findUserById(userId);
+        if (!userRow) {
+            throw new AppError(404, 'USER_NOT_FOUND', 'User not found');
+        }
+        const [permissions, activity] = await Promise.all([
+            this.authRepository.getUserPermissions(userId),
+            this.authRepository.getRecentActivity(userId),
+        ]);
+        return {
+            ...this.mapUser(userRow, permissions),
+            status: userRow.status,
+            recentActivity: activity.map((entry) => ({
+                id: entry.id,
+                actionCode: entry.action_code,
+                module: entry.module,
+                entityType: entry.entity_type,
+                entityId: entry.entity_id,
+                createdAt: entry.created_at.toISOString(),
+                ipAddress: entry.ip_address,
+            })),
+        };
+    }
+    async updateOwnProfile(userId, params) {
+        const existing = await this.authRepository.findUserById(userId);
+        if (!existing) {
+            throw new AppError(404, 'USER_NOT_FOUND', 'User not found');
+        }
+        let passwordHash = null;
+        if (params.newPassword) {
+            if (!params.currentPassword) {
+                throw new AppError(400, 'CURRENT_PASSWORD_REQUIRED', 'Current password is required');
+            }
+            const isCurrentPasswordValid = await bcrypt.compare(params.currentPassword, existing.password_hash);
+            if (!isCurrentPasswordValid) {
+                throw new AppError(400, 'CURRENT_PASSWORD_INVALID', 'Current password is invalid');
+            }
+            passwordHash = await bcrypt.hash(params.newPassword, 12);
+        }
+        await this.authRepository.updateOwnProfile(userId, {
+            username: params.username,
+            displayName: params.displayName,
+            avatarUrl: params.avatarUrl,
+            passwordHash,
+        });
+        await this.auditService.log({
+            actorUserId: userId,
+            actionCode: 'auth.profile.update',
+            module: 'auth',
+            entityType: 'auth_users',
+            entityId: userId,
+            oldValues: {
+                username: existing.username,
+                displayName: existing.display_name,
+                avatarUrl: existing.avatar_url ? '[stored]' : null,
+            },
+            newValues: {
+                username: params.username,
+                displayName: params.displayName,
+                avatarUpdated: params.avatarUrl !== existing.avatar_url,
+                passwordChanged: Boolean(params.newPassword),
+            },
+            ipAddress: params.ipAddress,
+        });
+        return this.getOwnProfile(userId);
+    }
     async logout(params) {
         if (!params.rawSessionToken) {
             return;
@@ -92,6 +158,7 @@ export class AuthService {
             username: row.username,
             displayName: row.display_name,
             avatarUrl: row.avatar_url,
+            lastLoginAt: row.last_login_at ? row.last_login_at.toISOString() : null,
             maxDiscountPercent: row.max_discount_percent === null ? null : Number(row.max_discount_percent),
             permissions,
             role: {

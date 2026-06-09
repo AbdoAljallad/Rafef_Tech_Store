@@ -8,9 +8,25 @@ import { AuthService } from './auth.service.js';
 const router = Router();
 const authService = new AuthService();
 
+const optionalImage = z
+  .string()
+  .trim()
+  .optional()
+  .nullable()
+  .refine((value) => !value || value.startsWith('data:image/'), 'INVALID_IMAGE')
+  .transform((value) => value || null);
+
 const loginSchema = z.object({
   username: z.string().trim().min(1),
   password: z.string().min(1),
+});
+
+const profileUpdateSchema = z.object({
+  username: z.string().trim().min(3).max(80).regex(/^[a-zA-Z0-9_.-]+$/),
+  displayName: z.string().trim().min(1).max(160),
+  avatarUrl: optionalImage,
+  currentPassword: z.string().optional(),
+  newPassword: z.string().min(8).optional().or(z.literal('')),
 });
 
 function sessionCookieOptions(expires: Date) {
@@ -62,6 +78,32 @@ router.get(
     response.json({
       user: request.currentUser,
     });
+  }),
+);
+
+router.get(
+  '/me/profile',
+  requireAuth,
+  asyncHandler(async (request, response) => {
+    const profile = await authService.getOwnProfile(request.currentUser!.id);
+    response.json({ profile });
+  }),
+);
+
+router.patch(
+  '/me/profile',
+  requireAuth,
+  asyncHandler(async (request, response) => {
+    const body = profileUpdateSchema.parse(request.body);
+    const profile = await authService.updateOwnProfile(request.currentUser!.id, {
+      username: body.username,
+      displayName: body.displayName,
+      avatarUrl: body.avatarUrl,
+      currentPassword: body.currentPassword,
+      newPassword: body.newPassword || undefined,
+      ipAddress: request.ip,
+    });
+    response.json({ profile });
   }),
 );
 

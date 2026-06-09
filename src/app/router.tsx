@@ -50,6 +50,8 @@ import { DailyClosingPage } from '../routes/finance/DailyClosingPage';
 import { ReportsPage } from '../routes/reports/ReportsPage';
 import { IntegrationHealthPage } from '../routes/integrations/IntegrationHealthPage';
 import { SettingsPage } from '../routes/settings/SettingsPage';
+import { SettingsProfilePage } from '../routes/settings/SettingsProfilePage';
+import { SettingsUsersPage } from '../routes/settings/SettingsUsersPage';
 import { EventsPage } from '../routes/events/EventsPage';
 
 function withPermission(path: string, element: ReactElement) {
@@ -230,8 +232,16 @@ export const router = createBrowserRouter([
             element: withPermission('/reports', <ReportsPage />),
           },
           {
+            path: 'settings',
+            element: <SettingsPage />,
+          },
+          {
+            path: 'settings/profile',
+            element: <SettingsProfilePage />,
+          },
+          {
             path: 'settings/users',
-            element: withPermission('/settings/users', <SettingsPage />),
+            element: withPermission('/settings/users', <SettingsUsersPage />),
           },
           {
             path: 'integrations/health',
