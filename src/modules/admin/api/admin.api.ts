@@ -4,6 +4,7 @@ export type CreateUserRequest = {
   username: string;
   password: string;
   displayName: string;
+  avatarUrl?: string | null;
   roleId: number;
   status: 'active' | 'disabled' | 'locked';
   maxDiscountPercent: number | null;
@@ -13,6 +14,7 @@ export type UpdateUserRequest = {
   username: string;
   password?: string;
   displayName: string;
+  avatarUrl?: string | null;
   roleId: number;
   status: 'active' | 'disabled' | 'locked';
   maxDiscountPercent: number | null;

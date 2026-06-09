@@ -5,10 +5,18 @@ import { requireAuth, requirePermission } from '../auth/auth.middleware.js';
 import { AdminService } from './admin.service.js';
 const router = Router();
 const admin = new AdminService();
+const optionalImage = z
+    .string()
+    .trim()
+    .nullable()
+    .optional()
+    .refine((value) => value == null || value === '' || value.startsWith('data:image/'), 'INVALID_IMAGE')
+    .transform((value) => value || null);
 const createUserSchema = z.object({
     username: z.string().trim().min(3).max(80).regex(/^[a-zA-Z0-9_.-]+$/),
     password: z.string().min(8).max(128),
     displayName: z.string().trim().min(1).max(160),
+    avatarUrl: optionalImage,
     roleId: z.coerce.number().int().positive(),
     status: z.enum(['active', 'disabled', 'locked']).default('active'),
     maxDiscountPercent: z.coerce.number().min(0).max(100).nullable().optional(),
@@ -18,6 +26,7 @@ const updateUserSchema = z.object({
     username: z.string().trim().min(3).max(80).regex(/^[a-zA-Z0-9_.-]+$/),
     password: z.string().min(8).max(128).optional().or(z.literal('')),
     displayName: z.string().trim().min(1).max(160),
+    avatarUrl: optionalImage,
     roleId: z.coerce.number().int().positive(),
     status: z.enum(['active', 'disabled', 'locked']),
     maxDiscountPercent: z.coerce.number().min(0).max(100).nullable().optional(),
@@ -37,6 +46,7 @@ router.post('/admin/users', requirePermission('auth.users.manage'), asyncHandler
         username: body.username,
         password: body.password,
         displayName: body.displayName,
+        avatarUrl: body.avatarUrl,
         roleId: body.roleId,
         status: body.status,
         maxDiscountPercent: body.maxDiscountPercent,
@@ -51,6 +61,7 @@ router.patch('/admin/users/:userId', requirePermission('auth.users.manage'), asy
         username: body.username,
         password: body.password || undefined,
         displayName: body.displayName,
+        avatarUrl: body.avatarUrl,
         roleId: body.roleId,
         status: body.status,
         maxDiscountPercent: body.maxDiscountPercent,

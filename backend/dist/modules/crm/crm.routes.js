@@ -9,13 +9,21 @@ const router = Router();
 const crmService = new CrmService();
 router.use(requireAuth);
 router.get('/customers', requirePermission('crm.customers.view'), asyncHandler(async (request, response) => {
-    const { pageSize, offset } = parsePagination(request.query);
-    const customers = await crmService.listCustomers({
+    const { page, pageSize, offset } = parsePagination(request.query);
+    const result = await crmService.listCustomers({
         search: typeof request.query.search === 'string' ? request.query.search : undefined,
         offset,
         limit: pageSize,
     });
-    response.json({ items: customers });
+    response.json({
+        items: result.items,
+        meta: {
+            page,
+            pageSize,
+            total: result.total,
+            totalPages: Math.max(1, Math.ceil(result.total / pageSize)),
+        },
+    });
 }));
 router.post('/customers', requirePermission('crm.customers.create'), asyncHandler(async (request, response) => {
     const input = customerCreateSchema.parse(request.body);
@@ -30,6 +38,10 @@ router.patch('/customers/:id', requirePermission('crm.customers.update'), asyncH
     const input = customerUpdateSchema.parse(request.body);
     const customer = await crmService.updateCustomer(parseId(request.params.id), input, request.currentUser.id, request.ip);
     response.json({ customer });
+}));
+router.delete('/customers/:id', requirePermission('crm.customers.update'), asyncHandler(async (request, response) => {
+    await crmService.deleteCustomer(parseId(request.params.id), request.currentUser.id, request.ip);
+    response.status(204).send();
 }));
 router.post('/customers/:id/contacts', requirePermission('crm.customers.update'), asyncHandler(async (request, response) => {
     const contact = await crmService.createContact(parseId(request.params.id), contactCreateSchema.parse(request.body));

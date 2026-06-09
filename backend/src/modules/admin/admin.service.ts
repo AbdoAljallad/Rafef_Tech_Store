@@ -30,6 +30,7 @@ export class AdminService {
     username: string;
     password: string;
     displayName: string;
+    avatarUrl?: string | null;
     roleId: number;
     status: 'active' | 'disabled' | 'locked';
     maxDiscountPercent?: number | null;
@@ -46,6 +47,7 @@ export class AdminService {
       username: params.username,
       passwordHash,
       displayName: params.displayName,
+      avatarUrl: params.avatarUrl,
       roleId: params.roleId,
       status: params.status,
       maxDiscountPercent: params.maxDiscountPercent,
@@ -61,6 +63,7 @@ export class AdminService {
       newValues: {
         username: params.username,
         displayName: params.displayName,
+        avatarUpdated: Boolean(params.avatarUrl),
         roleId: params.roleId,
         status: params.status,
         maxDiscountPercent: params.maxDiscountPercent ?? null,
@@ -77,6 +80,7 @@ export class AdminService {
       username: string;
       password?: string;
       displayName: string;
+      avatarUrl?: string | null;
       roleId: number;
       status: 'active' | 'disabled' | 'locked';
       maxDiscountPercent?: number | null;
@@ -104,6 +108,7 @@ export class AdminService {
       username: params.username,
       passwordHash,
       displayName: params.displayName,
+      avatarUrl: params.avatarUrl,
       roleId: params.roleId,
       status: params.status,
       maxDiscountPercent: params.maxDiscountPercent,
@@ -123,10 +128,14 @@ export class AdminService {
       module: 'auth',
       entityType: 'auth_users',
       entityId: userId,
-      oldValues: existing,
+      oldValues: {
+        ...existing,
+        avatar_url: existing.avatar_url ? '[stored]' : null,
+      },
       newValues: {
         username: params.username,
         displayName: params.displayName,
+        avatarUpdated: params.avatarUrl !== existing.avatar_url,
         roleId: params.roleId,
         status: params.status,
         maxDiscountPercent: params.maxDiscountPercent ?? null,

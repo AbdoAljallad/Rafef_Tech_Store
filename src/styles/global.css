@@ -1293,6 +1293,7 @@ textarea {
 }
 
 .avatar {
+  position: relative;
   display: grid;
   width: 48px;
   height: 48px;
@@ -1302,6 +1303,20 @@ textarea {
   color: #fff;
   font-weight: 800;
   overflow: hidden;
+}
+
+.avatar span {
+  position: relative;
+  z-index: 0;
+}
+
+.avatar img {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .radial-home {

@@ -14,6 +14,7 @@ import { creativeRouter } from './modules/creative/creative.routes.js';
 import { projectsRouter } from './modules/projects/projects.routes.js';
 import { reportsRouter } from './modules/reports/reports.routes.js';
 import { integrationsRouter } from './modules/integrations/integrations.routes.js';
+import { eventsRouter } from './modules/events/events.routes.js';
 import { aiRouter } from './modules/ai/ai.routes.js';
 import { adminRouter } from './modules/admin/admin.routes.js';
 import { errorMiddleware } from './shared/http/errorMiddleware.js';
@@ -39,7 +40,7 @@ export function createApp() {
         },
         credentials: true,
     }));
-    app.use(express.json());
+    app.use(express.json({ limit: '10mb' }));
     app.use(cookieParser());
     app.use('/api/health', healthRouter);
     app.use('/api/auth', authRouter);
@@ -53,6 +54,7 @@ export function createApp() {
     app.use('/api', projectsRouter);
     app.use('/api', reportsRouter);
     app.use('/api', integrationsRouter);
+    app.use('/api', eventsRouter);
     app.use('/api', aiRouter);
     app.use('/api', adminRouter);
     app.use(errorMiddleware);

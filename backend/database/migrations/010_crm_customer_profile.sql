@@ -1,0 +1,3 @@
+ALTER TABLE crm_customers
+  ADD COLUMN avatar_url LONGTEXT NULL AFTER email,
+  ADD COLUMN is_frozen BOOLEAN NOT NULL DEFAULT FALSE AFTER is_active;

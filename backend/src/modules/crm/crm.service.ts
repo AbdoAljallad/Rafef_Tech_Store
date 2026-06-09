@@ -19,14 +19,20 @@ export class CrmService {
   }
 
   async getCustomer(id: number) {
-    const customer = await this.crmRepository.findCustomerById(id);
-    if (!customer) throw new AppError(404, 'NOT_FOUND', 'Customer not found');
+    const customer = await this.crmRepository.findCustomerDetailById(id);
+    if (!customer) {
+      throw new AppError(404, 'NOT_FOUND', 'Customer not found');
+    }
+
     return customer;
   }
 
   async createCustomer(input: CustomerCreateInput, actorUserId: number, ipAddress?: string | null) {
     const customer = await this.crmRepository.createCustomer(input, actorUserId);
-    if (!customer) throw new AppError(500, 'INTERNAL_ERROR', 'Failed to create customer');
+    if (!customer) {
+      throw new AppError(500, 'INTERNAL_ERROR', 'Failed to create customer');
+    }
+
     await this.auditService.log({
       actorUserId,
       actionCode: 'crm.customer.created',
@@ -36,13 +42,17 @@ export class CrmService {
       newValues: input,
       ipAddress,
     });
+
     return customer;
   }
 
   async updateCustomer(id: number, input: CustomerUpdateInput, actorUserId: number, ipAddress?: string | null) {
     const before = await this.getCustomer(id);
     const customer = await this.crmRepository.updateCustomer(id, input, actorUserId);
-    if (!customer) throw new AppError(404, 'NOT_FOUND', 'Customer not found');
+    if (!customer) {
+      throw new AppError(404, 'NOT_FOUND', 'Customer not found');
+    }
+
     await this.auditService.log({
       actorUserId,
       actionCode: 'crm.customer.updated',
@@ -53,7 +63,27 @@ export class CrmService {
       newValues: input,
       ipAddress,
     });
+
     return customer;
+  }
+
+  async deleteCustomer(id: number, actorUserId: number, ipAddress?: string | null) {
+    const before = await this.getCustomer(id);
+    const deleted = await this.crmRepository.softDeleteCustomer(id, actorUserId);
+    if (!deleted) {
+      throw new AppError(404, 'NOT_FOUND', 'Customer not found');
+    }
+
+    await this.auditService.log({
+      actorUserId,
+      actionCode: 'crm.customer.deleted',
+      module: 'crm',
+      entityType: 'crm_customers',
+      entityId: id,
+      oldValues: before,
+      newValues: { isActive: false },
+      ipAddress,
+    });
   }
 
   async createContact(customerId: number, input: ContactCreateInput) {

@@ -6,6 +6,7 @@ type CreateUserInput = {
   username: string;
   passwordHash: string;
   displayName: string;
+  avatarUrl?: string | null;
   roleId: number;
   status: 'active' | 'disabled' | 'locked';
   maxDiscountPercent?: number | null;
@@ -15,6 +16,7 @@ type UpdateUserInput = {
   username: string;
   passwordHash?: string | null;
   displayName: string;
+  avatarUrl?: string | null;
   roleId: number;
   status: 'active' | 'disabled' | 'locked';
   maxDiscountPercent?: number | null;
@@ -23,7 +25,7 @@ type UpdateUserInput = {
 export class AdminRepository {
   async users() {
     const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT u.id, u.username, u.display_name, u.status, u.max_discount_percent, u.last_login_at,
+      `SELECT u.id, u.username, u.display_name, u.avatar_url, u.status, u.max_discount_percent, u.last_login_at,
               r.id role_id, r.code role_code, r.name_ru role_name
        FROM auth_users u INNER JOIN auth_roles r ON r.id = u.role_id
        ORDER BY u.id`,
@@ -33,7 +35,7 @@ export class AdminRepository {
 
   async findUserById(userId: number) {
     const [rows] = await pool.execute<RowDataPacket[]>(
-      `SELECT u.id, u.username, u.display_name, u.status, u.max_discount_percent, u.last_login_at,
+      `SELECT u.id, u.username, u.display_name, u.avatar_url, u.status, u.max_discount_percent, u.last_login_at,
               r.id role_id, r.code role_code, r.name_ru role_name
        FROM auth_users u INNER JOIN auth_roles r ON r.id = u.role_id
        WHERE u.id = ?
@@ -59,14 +61,15 @@ export class AdminRepository {
     try {
       const [result] = await pool.execute<ResultSetHeader>(
         `INSERT INTO auth_users (
-           role_id, username, password_hash, display_name, status, max_discount_percent
+           role_id, username, password_hash, display_name, avatar_url, status, max_discount_percent
          )
-         VALUES (?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
           input.roleId,
           input.username,
           input.passwordHash,
           input.displayName,
+          input.avatarUrl ?? null,
           input.status,
           input.maxDiscountPercent ?? null,
         ],
@@ -87,13 +90,14 @@ export class AdminRepository {
       if (input.passwordHash) {
         await pool.execute(
           `UPDATE auth_users
-           SET role_id = ?, username = ?, password_hash = ?, display_name = ?, status = ?, max_discount_percent = ?
+           SET role_id = ?, username = ?, password_hash = ?, display_name = ?, avatar_url = ?, status = ?, max_discount_percent = ?
            WHERE id = ?`,
           [
             input.roleId,
             input.username,
             input.passwordHash,
             input.displayName,
+            input.avatarUrl ?? null,
             input.status,
             input.maxDiscountPercent ?? null,
             userId,
@@ -104,9 +108,9 @@ export class AdminRepository {
 
       await pool.execute(
         `UPDATE auth_users
-         SET role_id = ?, username = ?, display_name = ?, status = ?, max_discount_percent = ?
+         SET role_id = ?, username = ?, display_name = ?, avatar_url = ?, status = ?, max_discount_percent = ?
          WHERE id = ?`,
-        [input.roleId, input.username, input.displayName, input.status, input.maxDiscountPercent ?? null, userId],
+        [input.roleId, input.username, input.displayName, input.avatarUrl ?? null, input.status, input.maxDiscountPercent ?? null, userId],
       );
     } catch (error) {
       if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'ER_DUP_ENTRY') {

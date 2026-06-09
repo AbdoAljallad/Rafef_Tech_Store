@@ -62,6 +62,15 @@ router.patch(
   }),
 );
 
+router.delete(
+  '/customers/:id',
+  requirePermission('crm.customers.update'),
+  asyncHandler(async (request, response) => {
+    await crmService.deleteCustomer(parseId(request.params.id), request.currentUser!.id, request.ip);
+    response.status(204).send();
+  }),
+);
+
 router.post(
   '/customers/:id/contacts',
   requirePermission('crm.customers.update'),

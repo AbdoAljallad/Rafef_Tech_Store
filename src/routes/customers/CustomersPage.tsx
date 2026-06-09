@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowUpRight, Building2, Hash, Mail, Phone, Plus, SearchX, UserRound, UsersRound } from 'lucide-react';
+import { ArrowUpRight, Building2, Hash, Mail, Phone, Plus, SearchX, Snowflake, UserRound, UsersRound } from 'lucide-react';
 import { useMemo, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { crmApi } from '../../modules/crm/api/crm.api';
@@ -13,30 +13,53 @@ import { PermissionGate } from '../../shared/permissions/PermissionGate';
 import { Button } from '../../shared/ui/Button';
 import { Select } from '../../shared/ui/Select';
 
-const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
-
 type ViewMode = 'cards' | 'table';
-
-function getCustomerTypeLabel(customer: Customer) {
-  return customer.customer_type === 'business' ? 'Компания' : 'Физ. лицо';
-}
-
-const tableActionButtonStyle: CSSProperties = {
-  minWidth: 'auto',
-  padding: '0.55rem 0.9rem',
-};
+type SortMode = 'name-asc' | 'name-desc' | 'code-asc' | 'code-desc' | 'created-desc' | 'created-asc';
 
 const toggleButtonBaseStyle: CSSProperties = {
   minWidth: 'auto',
   padding: '0.55rem 0.95rem',
 };
 
+const tableActionButtonStyle: CSSProperties = {
+  minWidth: 'auto',
+  padding: '0.55rem 0.9rem',
+};
+
+function getCustomerTypeLabel(customer: Customer) {
+  return customer.customer_type === 'business' ? 'Компания' : 'Физ. лицо';
+}
+
+function compareCustomers(left: Customer, right: Customer, sortMode: SortMode) {
+  switch (sortMode) {
+    case 'name-asc':
+      return left.name.localeCompare(right.name, 'ru');
+    case 'name-desc':
+      return right.name.localeCompare(left.name, 'ru');
+    case 'code-asc':
+      return left.customer_code.localeCompare(right.customer_code, 'ru');
+    case 'code-desc':
+      return right.customer_code.localeCompare(left.customer_code, 'ru');
+    case 'created-asc':
+      return new Date(left.created_at).getTime() - new Date(right.created_at).getTime();
+    case 'created-desc':
+    default:
+      return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
+  }
+}
+
+function clampPageSize(value: number) {
+  return Math.min(Math.max(value, 1), 1000);
+}
+
 export function CustomersPage() {
   const [search, setSearch] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(20);
+  const [pageSize, setPageSize] = useState(20);
+  const [pageSizeInput, setPageSizeInput] = useState('20');
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const [sortMode, setSortMode] = useState<SortMode>('created-desc');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const customersQuery = useQuery({
@@ -61,17 +84,43 @@ export function CustomersPage() {
     setPage(1);
   }
 
-  function handlePageSizeChange(value: string) {
-    setPageSize(Number(value) as (typeof PAGE_SIZE_OPTIONS)[number]);
+  function handleSortChange(value: string) {
+    setSortMode(value as SortMode);
+    setPage(1);
+  }
+
+  function handlePageSizeInputChange(value: string) {
+    if (!/^\d*$/.test(value)) {
+      return;
+    }
+
+    setPageSizeInput(value);
+
+    if (!value) {
+      return;
+    }
+
+    const nextPageSize = clampPageSize(Number(value));
+    setPageSize(nextPageSize);
+    setPage(1);
+  }
+
+  function handlePageSizeBlur() {
+    const normalized = clampPageSize(Number(pageSizeInput || pageSize));
+    setPageSize(normalized);
+    setPageSizeInput(String(normalized));
     setPage(1);
   }
 
   const customers = customersQuery.data?.items ?? [];
+  const sortedCustomers = useMemo(() => [...customers].sort((left, right) => compareCustomers(left, right, sortMode)), [customers, sortMode]);
   const meta = customersQuery.data?.meta;
-  const total = meta?.total ?? customers.length;
-  const totalPages = meta?.totalPages ?? 1;
+  const hasMeta = Boolean(meta && typeof meta.total === 'number' && typeof meta.totalPages === 'number');
+  const total = hasMeta ? meta!.total : (page - 1) * pageSize + sortedCustomers.length;
+  const totalPages = hasMeta ? meta!.totalPages : (sortedCustomers.length === pageSize ? page + 1 : page);
+  const hasNextPage = hasMeta ? page < totalPages : sortedCustomers.length === pageSize;
   const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
-  const rangeEnd = total === 0 ? 0 : Math.min(page * pageSize, total);
+  const rangeEnd = total === 0 ? 0 : (page - 1) * pageSize + sortedCustomers.length;
   const hasSearch = search.trim().length > 0;
 
   const tableColumns = useMemo<DataTableColumn<Customer>[]>(
@@ -83,6 +132,7 @@ export function CustomersPage() {
           <span className="customers-type-cell">
             {customer.customer_type === 'business' ? <Building2 size={16} aria-hidden="true" /> : <UserRound size={16} aria-hidden="true" />}
             <span>{getCustomerTypeLabel(customer)}</span>
+            {customer.is_frozen ? <Snowflake size={14} aria-label="Клиент заморожен" /> : null}
           </span>
         ),
       },
@@ -149,16 +199,33 @@ export function CustomersPage() {
           box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
         }
 
-        .customers-view-toggle button {
-          white-space: nowrap;
-        }
-
         .customers-type-cell {
           display: inline-flex;
           align-items: center;
           gap: 0.45rem;
           color: var(--color-text);
           font-weight: 600;
+        }
+
+        .customers-page-size {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.6rem;
+          padding: 0.45rem 0.8rem;
+          border: 1px solid rgba(125, 211, 252, 0.42);
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.72);
+          color: var(--color-primary-strong);
+          font-weight: 700;
+        }
+
+        .customers-page-size input {
+          width: 92px;
+          padding: 0.45rem 0.7rem;
+          border: 1px solid var(--color-border);
+          border-radius: 999px;
+          background: #fff;
+          color: var(--color-text);
         }
 
         .customers-table-wrap {
@@ -173,15 +240,6 @@ export function CustomersPage() {
           background: rgba(255, 255, 255, 0.7);
         }
 
-        .customers-table-wrap .data-table {
-          width: 100%;
-        }
-
-        .customers-table-wrap .data-table th,
-        .customers-table-wrap .data-table td {
-          vertical-align: middle;
-        }
-
         .customers-table-wrap .data-table tr.clickable {
           cursor: pointer;
         }
@@ -190,7 +248,49 @@ export function CustomersPage() {
           background: rgba(8, 120, 215, 0.06);
         }
 
-        @media (max-width: 740px) {
+        .customer-card-avatar {
+          width: 56px;
+          height: 56px;
+          border-radius: 18px;
+          overflow: hidden;
+          display: grid;
+          place-items: center;
+          border: 1px solid rgba(125, 211, 252, 0.34);
+          background: rgba(255, 255, 255, 0.78);
+          color: var(--color-primary-strong);
+        }
+
+        .customer-card-avatar img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .customer-card-topline {
+          align-items: center;
+        }
+
+        .customer-status-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.35rem;
+          padding: 0.25rem 0.65rem;
+          border-radius: 999px;
+          background: rgba(8, 120, 215, 0.09);
+          color: var(--color-primary-strong);
+          font-size: 0.8rem;
+          font-weight: 800;
+        }
+
+        .customers-pagination-extended {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 0.75rem;
+          flex-wrap: wrap;
+        }
+
+        @media (max-width: 860px) {
           .customers-inline-controls {
             width: 100%;
             justify-content: flex-start;
@@ -248,19 +348,36 @@ export function CustomersPage() {
                 Таблица
               </Button>
             </div>
-            <Select
-              aria-label="Количество клиентов на странице"
-              value={String(pageSize)}
-              onChange={(event) => handlePageSizeChange(event.target.value)}
-            >
-              {PAGE_SIZE_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option} на странице
-                </option>
-              ))}
+
+            <label className="customers-page-size">
+              <span>На странице</span>
+              <input
+                type="number"
+                min={1}
+                max={1000}
+                value={pageSizeInput}
+                placeholder="1-1000"
+                aria-label="Количество клиентов на странице"
+                onChange={(event) => handlePageSizeInputChange(event.target.value)}
+                onBlur={handlePageSizeBlur}
+              />
+            </label>
+
+            <Select aria-label="Сортировка клиентов" value={sortMode} onChange={(event) => handleSortChange(event.target.value)}>
+              <option value="name-asc">Имя: А-Я</option>
+              <option value="name-desc">Имя: Я-А</option>
+              <option value="code-asc">Код: по возрастанию</option>
+              <option value="code-desc">Код: по убыванию</option>
+              <option value="created-desc">Дата создания: сначала новые</option>
+              <option value="created-asc">Дата создания: сначала старые</option>
             </Select>
+
             <span className="customers-count">
-              {customersQuery.isLoading ? 'Загрузка' : `Показано: ${rangeStart}-${rangeEnd} из ${total}`}
+              {customersQuery.isLoading
+                ? 'Загрузка'
+                : hasMeta
+                  ? `Показано: ${rangeStart}-${rangeEnd} из ${total}`
+                  : `Показано: ${rangeStart}-${rangeEnd}`}
             </span>
           </div>
         </div>
@@ -285,7 +402,7 @@ export function CustomersPage() {
           </div>
         ) : null}
 
-        {!customersQuery.isLoading && !customersQuery.isError && customers.length === 0 ? (
+        {!customersQuery.isLoading && !customersQuery.isError && sortedCustomers.length === 0 ? (
           <div className="customers-empty-state">
             <span className="customers-empty-icon" aria-hidden="true">
               <UsersRound size={34} />
@@ -307,11 +424,11 @@ export function CustomersPage() {
           </div>
         ) : null}
 
-        {!customersQuery.isLoading && !customersQuery.isError && customers.length > 0 ? (
+        {!customersQuery.isLoading && !customersQuery.isError && sortedCustomers.length > 0 ? (
           <>
             {viewMode === 'cards' ? (
               <div className="customers-card-grid">
-                {customers.map((customer) => (
+                {sortedCustomers.map((customer) => (
                   <button
                     key={customer.id}
                     className="customer-card tech-card"
@@ -320,10 +437,16 @@ export function CustomersPage() {
                   >
                     <span className="customer-card-glow" aria-hidden="true" />
                     <span className="customer-card-topline">
-                      <span className="customer-card-icon" aria-hidden="true">
-                        {customer.customer_type === 'business' ? <Building2 size={22} /> : <UserRound size={22} />}
+                      <span className="customer-card-avatar" aria-hidden="true">
+                        {customer.avatar_url ? <img src={customer.avatar_url} alt="" /> : <UserRound size={22} />}
                       </span>
                       <span className="customer-type-pill">{getCustomerTypeLabel(customer)}</span>
+                      {customer.is_frozen ? (
+                        <span className="customer-status-pill">
+                          <Snowflake size={14} aria-hidden="true" />
+                          <span>Заморожен</span>
+                        </span>
+                      ) : null}
                     </span>
                     <span className="customer-card-title">
                       <span>{customer.name}</span>
@@ -348,7 +471,7 @@ export function CustomersPage() {
               <div className="customers-table-wrap">
                 <DataTable
                   columns={tableColumns}
-                  rows={customers}
+                  rows={sortedCustomers}
                   isLoading={customersQuery.isLoading}
                   emptyText="Клиенты не найдены"
                   getRowKey={(customer) => customer.id}
@@ -357,15 +480,21 @@ export function CustomersPage() {
               </div>
             )}
 
-            <div className="customers-pagination" aria-label="Навигация по страницам клиентов">
-              <Button type="button" variant="secondary" disabled={page <= 1} onClick={() => setPage((current) => current - 1)}>
+            <div className="customers-pagination customers-pagination-extended" aria-label="Навигация по страницам клиентов">
+              <Button type="button" variant="secondary" aria-label="Перейти на первую страницу" disabled={page <= 1} onClick={() => setPage(1)}>
+                {'<<'}
+              </Button>
+              <Button type="button" variant="secondary" aria-label="Перейти на предыдущую страницу" disabled={page <= 1} onClick={() => setPage((current) => current - 1)}>
                 Назад
               </Button>
               <span className="customers-pagination-status">
-                Страница {page} из {totalPages}
+                {hasMeta ? `Страница ${page} из ${totalPages}` : `Страница ${page}`}
               </span>
-              <Button type="button" variant="secondary" disabled={page >= totalPages} onClick={() => setPage((current) => current + 1)}>
+              <Button type="button" variant="secondary" aria-label="Перейти на следующую страницу" disabled={!hasNextPage} onClick={() => setPage((current) => current + 1)}>
                 Вперёд
+              </Button>
+              <Button type="button" variant="secondary" aria-label="Перейти на последнюю страницу" disabled={!hasMeta || page >= totalPages} onClick={() => setPage(totalPages)}>
+                {'>>'}
               </Button>
             </div>
           </>

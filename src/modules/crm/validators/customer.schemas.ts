@@ -7,26 +7,38 @@ const optionalText = z
   .trim()
   .optional()
   .transform((value) => value || null);
-const optionalEmail = z
+const optionalImage = z
   .string()
   .trim()
   .optional()
-  .refine((value) => !value || z.string().email().safeParse(value).success, emailMessage)
+  .refine((value) => !value || value.startsWith('data:image/'), 'Загрузите корректное изображение')
   .transform((value) => value || null);
+
+export const contactFormSchema = z
+  .object({
+    contactType: z.enum(['phone', 'email', 'whatsapp', 'telegram', 'other']),
+    contactValue: z.string().trim().min(1, requiredMessage),
+    isPrimary: z.boolean(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.contactType === 'email' && !z.string().email().safeParse(value.contactValue).success) {
+      ctx.addIssue({
+        code: 'custom',
+        message: emailMessage,
+        path: ['contactValue'],
+      });
+    }
+  });
 
 export const customerFormSchema = z.object({
   name: z.string().trim().min(1, requiredMessage),
-  phonePrimary: optionalText,
-  phoneSecondary: optionalText,
-  email: optionalEmail,
+  avatarUrl: optionalImage,
   customerType: z.enum(['person', 'business']),
   notes: optionalText,
-});
-
-export const contactFormSchema = z.object({
-  contactType: z.enum(['phone', 'email', 'whatsapp', 'telegram', 'other']),
-  contactValue: z.string().trim().min(1, requiredMessage),
-  isPrimary: z.boolean(),
+  contacts: z
+    .array(contactFormSchema)
+    .max(20, 'Можно добавить не более 20 способов связи')
+    .default([]),
 });
 
 export const locationFormSchema = z.object({

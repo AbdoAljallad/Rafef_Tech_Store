@@ -1,0 +1,2 @@
+ALTER TABLE auth_users
+  MODIFY COLUMN avatar_url LONGTEXT NULL;
