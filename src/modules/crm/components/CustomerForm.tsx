@@ -27,12 +27,15 @@ function getInitialContacts(customer?: Customer): CustomerFormValues['contacts']
   }
 
   const fallbackContacts: CustomerFormValues['contacts'] = [];
+
   if (customer?.phone_primary) {
     fallbackContacts.push({ contactType: 'phone', contactValue: customer.phone_primary, isPrimary: true });
   }
+
   if (customer?.phone_secondary) {
     fallbackContacts.push({ contactType: 'phone', contactValue: customer.phone_secondary, isPrimary: false });
   }
+
   if (customer?.email) {
     fallbackContacts.push({ contactType: 'email', contactValue: customer.email, isPrimary: true });
   }
@@ -200,7 +203,7 @@ export function CustomerForm({ customer, onSubmit, onCancel, isSubmitting }: Cus
               />
             </label>
             {avatarPreview ? (
-              <Button type="button" variant="secondary" onClick={() => form.setValue('avatarUrl', null, { shouldDirty: true })}>
+              <Button type="button" variant="secondary" onClick={() => form.setValue('avatarUrl', null, { shouldDirty: true, shouldValidate: true })}>
                 Удалить фото
               </Button>
             ) : null}

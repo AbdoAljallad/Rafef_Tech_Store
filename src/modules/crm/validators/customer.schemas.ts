@@ -2,15 +2,19 @@ import { z } from 'zod';
 
 const requiredMessage = 'Обязательное поле';
 const emailMessage = 'Введите корректный email';
+
 const optionalText = z
   .string()
   .trim()
   .optional()
+  .nullable()
   .transform((value) => value || null);
+
 const optionalImage = z
   .string()
   .trim()
   .optional()
+  .nullable()
   .refine((value) => !value || value.startsWith('data:image/'), 'Загрузите корректное изображение')
   .transform((value) => value || null);
 
@@ -35,10 +39,7 @@ export const customerFormSchema = z.object({
   avatarUrl: optionalImage,
   customerType: z.enum(['person', 'business']),
   notes: optionalText,
-  contacts: z
-    .array(contactFormSchema)
-    .max(20, 'Можно добавить не более 20 способов связи')
-    .default([]),
+  contacts: z.array(contactFormSchema).max(20, 'Можно добавить не более 20 способов связи').default([]),
 });
 
 export const locationFormSchema = z.object({
