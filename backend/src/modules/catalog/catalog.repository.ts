@@ -1,6 +1,14 @@
-import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
+import type { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import { pool } from '../../database/mysql.js';
-import type { CategoryCreateInput, PriceChangeInput, ProductCreateInput, ProductUpdateInput, SupplierCreateInput } from './catalog.schemas.js';
+import { AppError } from '../../shared/errors/AppError.js';
+import type {
+  CategoryCreateInput,
+  PriceChangeInput,
+  ProductCreateInput,
+  ProductSupplierLinkInput,
+  ProductUpdateInput,
+  SupplierCreateInput,
+} from './catalog.schemas.js';
 
 export type ProductRow = RowDataPacket & {
   id: number;
@@ -24,6 +32,15 @@ export type ProductRow = RowDataPacket & {
   quantity_on_hand: string;
   quantity_reserved: string;
   quantity_available: string;
+};
+
+type ProductSupplierRow = RowDataPacket & {
+  supplier_id: number;
+  supplier_name: string;
+  supplier_phone: string | null;
+  supplier_email: string | null;
+  supplier_sku: string | null;
+  last_purchase_price: string | null;
 };
 
 const liveReservationJoin = `
@@ -284,6 +301,16 @@ export class CatalogRepository {
     return rows;
   }
 
+  async listSuppliers() {
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT *
+       FROM catalog_suppliers
+       WHERE is_active = TRUE
+       ORDER BY name ASC, id DESC`,
+    );
+    return rows;
+  }
+
   async createSupplier(input: SupplierCreateInput, userId: number) {
     const [result] = await pool.execute<ResultSetHeader>(
       `INSERT INTO catalog_suppliers (name, phone, email, address_text, notes, created_by_user_id)
@@ -294,11 +321,87 @@ export class CatalogRepository {
     return rows[0];
   }
 
+  async listProductSuppliers(productId: number) {
+    const [rows] = await pool.execute<ProductSupplierRow[]>(
+      `SELECT
+         ps.supplier_id,
+         s.name AS supplier_name,
+         s.phone AS supplier_phone,
+         s.email AS supplier_email,
+         ps.supplier_sku,
+         ps.last_purchase_price
+       FROM catalog_product_suppliers ps
+       INNER JOIN catalog_suppliers s ON s.id = ps.supplier_id
+       WHERE ps.product_id = ?
+       ORDER BY s.name ASC`,
+      [productId],
+    );
+    return rows;
+  }
+
+  async replaceProductSuppliers(productId: number, links: ProductSupplierLinkInput[]) {
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      await this.assertProductExists(productId, connection);
+
+      if (links.length) {
+        for (const link of links) {
+          await this.assertSupplierExists(link.supplierId, connection);
+        }
+      }
+
+      await connection.execute('DELETE FROM catalog_product_suppliers WHERE product_id = ?', [productId]);
+
+      for (const link of links) {
+        await connection.execute(
+          `INSERT INTO catalog_product_suppliers (product_id, supplier_id, supplier_sku, last_purchase_price)
+           VALUES (?, ?, ?, ?)`,
+          [
+            productId,
+            link.supplierId,
+            nullable(link.supplierSku),
+            link.lastPurchasePrice ?? null,
+          ],
+        );
+      }
+
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+
+    return this.listProductSuppliers(productId);
+  }
+
   private async addBarcode(productId: number, barcode: string, isPrimary: boolean) {
     await pool.execute(
       `INSERT INTO catalog_product_barcodes (product_id, barcode, is_primary)
        VALUES (?, ?, ?)`,
       [productId, barcode, isPrimary],
     );
+  }
+
+  private async assertProductExists(productId: number, connection: PoolConnection) {
+    const [rows] = await connection.execute<RowDataPacket[]>(
+      'SELECT id FROM catalog_products WHERE id = ? LIMIT 1',
+      [productId],
+    );
+    if (!rows.length) {
+      throw new AppError(404, 'NOT_FOUND', `Product ${productId} not found`);
+    }
+  }
+
+  private async assertSupplierExists(supplierId: number, connection: PoolConnection) {
+    const [rows] = await connection.execute<RowDataPacket[]>(
+      'SELECT id FROM catalog_suppliers WHERE id = ? AND is_active = TRUE LIMIT 1',
+      [supplierId],
+    );
+    if (!rows.length) {
+      throw new AppError(404, 'NOT_FOUND', `Supplier ${supplierId} not found`);
+    }
   }
 }

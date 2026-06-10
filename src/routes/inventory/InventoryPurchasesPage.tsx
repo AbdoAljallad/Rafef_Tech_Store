@@ -31,6 +31,7 @@ export function InventoryPurchasesPage() {
   const [error, setError] = useState('');
   const queryClient = useQueryClient();
   const productsQuery = useQuery({ queryKey: ['products'], queryFn: () => catalogApi.listProducts() });
+  const suppliersQuery = useQuery({ queryKey: ['catalog-suppliers'], queryFn: () => catalogApi.listSuppliers() });
   const productsById = new Map((productsQuery.data?.items ?? []).map((product) => [product.id, product]));
   const createMutation = useMutation({
     mutationFn: inventoryApi.createPurchase,
@@ -91,7 +92,14 @@ export function InventoryPurchasesPage() {
           <h2>{t('inventory.purchasesPage.createTitle')}</h2>
           <PermissionGate permission="inventory.purchases.manage">
             <form className="entity-form" onSubmit={createForm.handleSubmit(createPurchase)}>
-              <Input label={t('inventory.purchasesPage.supplierId')} type="number" error={createForm.formState.errors.supplierId?.message} {...createForm.register('supplierId')} />
+              <Select label={t('inventory.purchasesPage.supplierId')} error={createForm.formState.errors.supplierId?.message} {...createForm.register('supplierId')}>
+                <option value="">-</option>
+                {(suppliersQuery.data?.items ?? []).map((supplier) => (
+                  <option key={supplier.id} value={supplier.id}>
+                    {supplier.name}
+                  </option>
+                ))}
+              </Select>
               <Select label={t('inventory.product')} error={createForm.formState.errors.productId?.message} {...createForm.register('productId')}>
                 <option value={0}>{t('inventory.selectProduct')}</option>
                 {(productsQuery.data?.items ?? []).map((product) => (

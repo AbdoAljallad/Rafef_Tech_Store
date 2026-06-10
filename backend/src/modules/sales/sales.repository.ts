@@ -120,6 +120,11 @@ type RepairPartBillableRow = RowDataPacket & {
   reservation_status: 'active' | 'consumed' | 'released' | 'cancelled' | null;
 };
 
+type FinanceMethodLockRow = RowDataPacket & {
+  id: number;
+  linked_account_id: number | null;
+};
+
 type BalanceLockRow = RowDataPacket & {
   product_id: number;
   quantity_on_hand: string;
@@ -505,7 +510,16 @@ export class SalesRepository {
     return rows[0] ?? null;
   }
 
-  async approveInvoice(id: number, approverId: number) {
+  async approveInvoice(
+    id: number,
+    approverId: number,
+    payment?: {
+      paymentAccountId?: number | null;
+      paymentMethodId?: number | null;
+      paymentAmount?: number | null;
+      paymentReference?: string | null;
+    },
+  ) {
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
@@ -541,6 +555,8 @@ export class SalesRepository {
         [approverId, id],
       );
 
+      await this.recordFinancePayment(connection, invoice, approverId, payment);
+
       await connection.commit();
     } catch (error) {
       await connection.rollback();
@@ -550,6 +566,103 @@ export class SalesRepository {
     }
 
     return this.getInvoiceById(id);
+  }
+
+  private async recordFinancePayment(
+    connection: PoolConnection,
+    invoice: InvoiceHeaderRow,
+    actorUserId: number,
+    payment?: {
+      paymentAccountId?: number | null;
+      paymentMethodId?: number | null;
+      paymentAmount?: number | null;
+      paymentReference?: string | null;
+    },
+  ) {
+    if (!payment || (!payment.paymentAccountId && !payment.paymentMethodId)) {
+      return;
+    }
+
+    const amount = Number(payment.paymentAmount ?? invoice.total ?? 0);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'Payment amount must be greater than zero');
+    }
+
+    const paymentMethodId = payment.paymentMethodId ?? null;
+    const paymentAccountId = await this.resolveFinanceAccountId(connection, payment.paymentAccountId ?? null, paymentMethodId);
+    if (!paymentAccountId) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'Select a payment account or link the payment method to an account');
+    }
+
+    await connection.execute(
+      `INSERT INTO finance_transactions (
+         transaction_code,
+         account_id,
+         payment_method_id,
+         amount,
+         currency,
+         direction,
+         operation_type,
+         reference_type,
+         reference_id,
+         counterparty_name,
+         external_reference,
+         notes,
+         created_by_user_id
+       )
+       VALUES (?, ?, ?, ?, 'EGP', 'in', 'sale_payment', 'sales_invoice', ?, ?, ?, ?, ?)`,
+      [
+        `FTX-${Date.now()}-${invoice.id}`,
+        paymentAccountId,
+        paymentMethodId,
+        amount,
+        invoice.id,
+        invoice.customer_name ?? invoice.customer_code ?? 'Walk-in customer',
+        payment.paymentReference ?? invoice.invoice_code,
+        `Payment for ${invoice.invoice_code}`,
+        actorUserId,
+      ],
+    );
+  }
+
+  private async resolveFinanceAccountId(connection: PoolConnection, accountId: number | null, methodId: number | null) {
+    if (accountId) {
+      await this.assertFinanceAccountExists(connection, accountId);
+      return accountId;
+    }
+
+    if (!methodId) {
+      return null;
+    }
+
+    const [rows] = await connection.execute<FinanceMethodLockRow[]>(
+      `SELECT id, linked_account_id
+       FROM finance_payment_methods
+       WHERE id = ?
+       LIMIT 1`,
+      [methodId],
+    );
+    const method = rows[0];
+    if (!method) {
+      throw new AppError(404, 'NOT_FOUND', 'Payment method not found');
+    }
+    if (method.linked_account_id) {
+      await this.assertFinanceAccountExists(connection, Number(method.linked_account_id));
+    }
+    return Number(method.linked_account_id ?? 0) || null;
+  }
+
+  private async assertFinanceAccountExists(connection: PoolConnection, accountId: number) {
+    const [rows] = await connection.execute<RowDataPacket[]>(
+      `SELECT id
+       FROM finance_payment_accounts
+       WHERE id = ?
+       LIMIT 1`,
+      [accountId],
+    );
+    if (!rows.length) {
+      throw new AppError(404, 'NOT_FOUND', 'Payment account not found');
+    }
   }
 
   async markVoided(id: number, voiderId: number) {

@@ -5,6 +5,7 @@ import type {
   FinanceDashboard,
   FinanceMethod,
   FinanceMethodCreatePayload,
+  FinanceProvider,
   FinanceTransaction,
   FinanceTransactionCreatePayload,
 } from '../types/finance.types';
@@ -12,6 +13,17 @@ import type {
 const financeApi = {
   getDashboard() {
     return httpClient.get<FinanceDashboard>('/api/finance/dashboard');
+  },
+  listProviders(params?: { providerType?: string; search?: string }) {
+    const query = new URLSearchParams();
+    if (params?.providerType) {
+      query.set('providerType', params.providerType);
+    }
+    if (params?.search?.trim()) {
+      query.set('search', params.search.trim());
+    }
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return httpClient.get<{ items: FinanceProvider[] }>(`/api/finance/providers${suffix}`);
   },
   listAccounts() {
     return httpClient.get<{ items: FinanceAccount[] }>('/api/finance/accounts');

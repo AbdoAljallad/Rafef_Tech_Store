@@ -9,6 +9,7 @@ export class FinanceService {
     name: string;
     type: string;
     provider?: string | null;
+    providerCode?: string | null;
     currency: string;
     accountNumber?: string | null;
     openingBalance?: number;
@@ -27,11 +28,16 @@ export class FinanceService {
     return this.repo.getDashboard();
   }
 
+  async listProviders(params: { providerType?: string; search?: string } = {}) {
+    return this.repo.listProviders(params);
+  }
+
   async createMethod(payload: {
     code: string;
     name: string;
     methodType: string;
     provider?: string | null;
+    providerCode?: string | null;
     linkedAccountId?: number | null;
     notes?: string | null;
     createdBy?: number;

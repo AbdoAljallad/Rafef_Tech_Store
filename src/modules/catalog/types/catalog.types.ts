@@ -23,6 +23,23 @@ export type Product = {
   quantity_available?: string;
 };
 export type Service = { id: number; code: string; default_name: string; module: string; default_price: string; category_name: string };
+export type Supplier = {
+  id: number;
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+  address_text?: string | null;
+  notes?: string | null;
+  is_active?: number;
+};
+export type ProductSupplierLink = {
+  supplier_id: number;
+  supplier_name: string;
+  supplier_phone: string | null;
+  supplier_email: string | null;
+  supplier_sku: string | null;
+  last_purchase_price: string | null;
+};
 export type ProductRequest = {
   categoryId: number;
   unitId: number;
@@ -45,3 +62,8 @@ export type CategoryRequest = {
   showInCreative: boolean;
 };
 export type SupplierRequest = { name: string; phone?: string | null; email?: string | null; addressText?: string | null; notes?: string | null };
+export type ProductSupplierRequest = {
+  supplierId: number;
+  supplierSku?: string | null;
+  lastPurchasePrice?: number | null;
+};

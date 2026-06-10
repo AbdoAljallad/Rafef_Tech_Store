@@ -8,6 +8,12 @@ export class FinanceService {
     async listAccounts() {
         return this.repo.listAccounts();
     }
+    async getDashboard() {
+        return this.repo.getDashboard();
+    }
+    async listProviders(params = {}) {
+        return this.repo.listProviders(params);
+    }
     async createMethod(payload) {
         return this.repo.createMethod(payload);
     }
@@ -16,7 +22,24 @@ export class FinanceService {
     }
     async createTransaction(input) {
         const code = `FTX-${Date.now()}-${nanoid(6)}`;
-        return this.repo.createTransaction({ transactionCode: code, accountId: input.accountId, paymentMethodId: input.paymentMethodId, amount: input.amount, currency: input.currency, direction: input.direction, referenceType: input.referenceType ?? null, referenceId: input.referenceId ?? null, notes: input.notes ?? null, createdBy: input.createdBy ?? null });
+        return this.repo.createTransaction({
+            transactionCode: code,
+            accountId: input.accountId,
+            paymentMethodId: input.paymentMethodId,
+            amount: input.amount,
+            currency: input.currency,
+            direction: input.direction,
+            operationType: input.operationType,
+            referenceType: input.referenceType ?? null,
+            referenceId: input.referenceId ?? null,
+            counterpartyName: input.counterpartyName ?? null,
+            externalReference: input.externalReference ?? null,
+            notes: input.notes ?? null,
+            createdBy: input.createdBy ?? null,
+        });
+    }
+    async listTransactions(params = {}) {
+        return this.repo.listTransactions(params);
     }
     async createCustomerLedger(entry) {
         return this.repo.createCustomerLedger(entry);

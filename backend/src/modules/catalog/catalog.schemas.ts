@@ -42,8 +42,19 @@ export const supplierCreateSchema = z.object({
   notes: z.string().trim().optional().nullable(),
 });
 
+export const productSupplierLinkSchema = z.object({
+  supplierId: z.coerce.number().int().positive(),
+  supplierSku: z.string().trim().optional().nullable(),
+  lastPurchasePrice: moneySchema.optional().nullable(),
+});
+
+export const productSuppliersUpdateSchema = z.object({
+  suppliers: z.array(productSupplierLinkSchema),
+});
+
 export type ProductCreateInput = z.infer<typeof productCreateSchema>;
 export type ProductUpdateInput = z.infer<typeof productUpdateSchema>;
 export type PriceChangeInput = z.infer<typeof priceChangeSchema>;
 export type CategoryCreateInput = z.infer<typeof categoryCreateSchema>;
 export type SupplierCreateInput = z.infer<typeof supplierCreateSchema>;
+export type ProductSupplierLinkInput = z.infer<typeof productSupplierLinkSchema>;

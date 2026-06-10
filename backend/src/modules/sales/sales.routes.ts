@@ -57,8 +57,20 @@ router.patch('/sales/invoices/:id', requirePermission('sales.invoices.view'), as
 }));
 
 router.post('/sales/invoices/:id/approve', requirePermission('sales.invoices.approve'), asyncHandler(async (req, res) => {
-  invoiceApproveSchema.parse(req.body);
-  res.json({ invoice: await sales.approveInvoice(parseId(req.params.id), req.currentUser!.id, req.ip) });
+  const payload = invoiceApproveSchema.parse(req.body);
+  res.json({
+    invoice: await sales.approveInvoice(
+      parseId(req.params.id),
+      req.currentUser!.id,
+      {
+        paymentAccountId: payload.paymentAccountId ?? null,
+        paymentMethodId: payload.paymentMethodId ?? null,
+        paymentAmount: payload.paymentAmount ?? null,
+        paymentReference: payload.paymentReference ?? null,
+      },
+      req.ip,
+    ),
+  });
 }));
 
 router.post('/sales/invoices/:id/void', requirePermission('sales.invoices.void'), asyncHandler(async (req, res) => {

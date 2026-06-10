@@ -65,8 +65,8 @@ export class SalesService {
         });
         return updated;
     }
-    async approveInvoice(id, actorUserId, ip) {
-        const updated = await this.salesRepo.approveInvoice(id, actorUserId);
+    async approveInvoice(id, actorUserId, payload, ip) {
+        const updated = await this.salesRepo.approveInvoice(id, actorUserId, payload);
         await this.auditService.log({ actorUserId, actionCode: 'sales.invoice.approved', module: 'sales', entityType: 'sales_invoices', entityId: id, newValues: updated, ipAddress: ip });
         return updated;
     }

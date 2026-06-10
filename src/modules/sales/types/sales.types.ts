@@ -112,3 +112,10 @@ export type SalesInvoicePrintPayload = {
   receiptHeaderText?: string | null;
   receiptFooterText?: string | null;
 };
+
+export type SalesInvoiceApprovePayload = {
+  paymentAccountId?: number | null;
+  paymentMethodId?: number | null;
+  paymentAmount?: number | null;
+  paymentReference?: string | null;
+};

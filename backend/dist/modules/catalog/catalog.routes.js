@@ -4,7 +4,7 @@ import { asyncHandler } from '../../shared/http/asyncHandler.js';
 import { parseId } from '../../shared/http/ids.js';
 import { parsePagination } from '../../shared/http/pagination.js';
 import { CatalogService } from './catalog.service.js';
-import { categoryCreateSchema, priceChangeSchema, productCreateSchema, productUpdateSchema, supplierCreateSchema } from './catalog.schemas.js';
+import { categoryCreateSchema, priceChangeSchema, productCreateSchema, productSuppliersUpdateSchema, productUpdateSchema, supplierCreateSchema, } from './catalog.schemas.js';
 import { AppError } from '../../shared/errors/AppError.js';
 const router = Router();
 const catalogService = new CatalogService();
@@ -47,6 +47,9 @@ router.get('/categories', requirePermission('catalog.products.view'), asyncHandl
 router.post('/categories', requirePermission('catalog.products.manage'), asyncHandler(async (request, response) => {
     response.status(201).json({ category: await catalogService.createCategory(categoryCreateSchema.parse(request.body)) });
 }));
+router.get('/suppliers', requirePermission('catalog.products.view'), asyncHandler(async (_request, response) => {
+    response.json({ items: await catalogService.listSuppliers() });
+}));
 router.get('/units', requirePermission('catalog.products.view'), asyncHandler(async (_request, response) => {
     response.json({ items: await catalogService.listUnits() });
 }));
@@ -58,5 +61,14 @@ router.get('/services', requirePermission('catalog.products.view'), asyncHandler
 router.post('/suppliers', requirePermission('catalog.suppliers.manage'), asyncHandler(async (request, response) => {
     const supplier = await catalogService.createSupplier(supplierCreateSchema.parse(request.body), request.currentUser.id, request.ip);
     response.status(201).json({ supplier });
+}));
+router.get('/products/:id/suppliers', requirePermission('catalog.products.view'), asyncHandler(async (request, response) => {
+    response.json({ items: await catalogService.listProductSuppliers(parseId(request.params.id)) });
+}));
+router.put('/products/:id/suppliers', requirePermission('catalog.products.manage'), asyncHandler(async (request, response) => {
+    const payload = productSuppliersUpdateSchema.parse(request.body);
+    response.json({
+        items: await catalogService.replaceProductSuppliers(parseId(request.params.id), payload.suppliers, request.currentUser.id, request.ip),
+    });
 }));
 export { router as catalogRouter };

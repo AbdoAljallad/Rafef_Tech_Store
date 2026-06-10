@@ -35,3 +35,11 @@ export const supplierCreateSchema = z.object({
     addressText: z.string().trim().optional().nullable(),
     notes: z.string().trim().optional().nullable(),
 });
+export const productSupplierLinkSchema = z.object({
+    supplierId: z.coerce.number().int().positive(),
+    supplierSku: z.string().trim().optional().nullable(),
+    lastPurchasePrice: moneySchema.optional().nullable(),
+});
+export const productSuppliersUpdateSchema = z.object({
+    suppliers: z.array(productSupplierLinkSchema),
+});

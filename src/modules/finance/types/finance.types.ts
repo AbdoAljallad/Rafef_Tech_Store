@@ -39,6 +39,7 @@ export type FinanceAccount = {
   name: string;
   type: FinanceAccountType;
   provider: string | null;
+  provider_code: string | null;
   currency: string;
   account_number: string | null;
   opening_balance: string;
@@ -62,6 +63,7 @@ export type FinanceMethod = {
   name: string;
   method_type: FinanceMethodType;
   provider: string | null;
+  provider_code: string | null;
   linked_account_id: number | null;
   linked_account_code: string | null;
   linked_account_name: string | null;
@@ -117,11 +119,27 @@ export type FinanceDashboard = {
   recentTransactions: FinanceTransaction[];
 };
 
+export type FinanceProvider = {
+  id: number;
+  code: string;
+  provider_type: 'bank' | 'wallet' | 'payment_machine' | 'cash_holder' | string;
+  name: string;
+  short_name: string | null;
+  parent_code: string | null;
+  country_code: string;
+  logo_url: string | null;
+  source_url: string | null;
+  notes: string | null;
+  sort_order: number;
+  is_active: number;
+};
+
 export type FinanceAccountCreatePayload = {
   code: string;
   name: string;
   type: FinanceAccountType;
   provider?: string | null;
+  providerCode?: string | null;
   currency?: string;
   accountNumber?: string | null;
   openingBalance?: number;
@@ -134,6 +152,7 @@ export type FinanceMethodCreatePayload = {
   name: string;
   methodType: FinanceMethodType;
   provider?: string | null;
+  providerCode?: string | null;
   linkedAccountId?: number | null;
   notes?: string | null;
 };

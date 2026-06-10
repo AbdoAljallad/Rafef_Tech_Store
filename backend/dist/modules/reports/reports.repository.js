@@ -21,7 +21,13 @@ export class ReportsRepository {
         return one(`SELECT
       COALESCE(SUM(CASE WHEN direction='in' THEN amount ELSE 0 END),0) incoming,
       COALESCE(SUM(CASE WHEN direction='out' THEN amount ELSE 0 END),0) outgoing,
-      COUNT(*) transactions
+      COUNT(*) transactions,
+      COALESCE((SELECT SUM(amount) FROM finance_expenses), 0) expenses,
+      COALESCE((SELECT SUM(amount) FROM finance_refunds), 0) refunds,
+      COALESCE(SUM(CASE WHEN direction='in' THEN amount ELSE 0 END),0)
+      - COALESCE(SUM(CASE WHEN direction='out' THEN amount ELSE 0 END),0)
+      - COALESCE((SELECT SUM(amount) FROM finance_expenses), 0)
+      - COALESCE((SELECT SUM(amount) FROM finance_refunds), 0) AS net
       FROM finance_transactions`);
     }
     repair() {

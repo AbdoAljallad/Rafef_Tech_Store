@@ -1,4 +1,5 @@
 import { pool } from '../../database/mysql.js';
+import { AppError } from '../../shared/errors/AppError.js';
 const liveReservationJoin = `
   LEFT JOIN (
     SELECT product_id, COALESCE(SUM(quantity), 0) AS quantity_reserved_live
@@ -207,14 +208,78 @@ export class CatalogRepository {
        ORDER BY s.module, s.default_name`, values);
         return rows;
     }
+    async listSuppliers() {
+        const [rows] = await pool.query(`SELECT *
+       FROM catalog_suppliers
+       WHERE is_active = TRUE
+       ORDER BY name ASC, id DESC`);
+        return rows;
+    }
     async createSupplier(input, userId) {
         const [result] = await pool.execute(`INSERT INTO catalog_suppliers (name, phone, email, address_text, notes, created_by_user_id)
        VALUES (?, ?, ?, ?, ?, ?)`, [input.name, nullable(input.phone), nullable(input.email), nullable(input.addressText), nullable(input.notes), userId]);
         const [rows] = await pool.execute('SELECT * FROM catalog_suppliers WHERE id = ?', [result.insertId]);
         return rows[0];
     }
+    async listProductSuppliers(productId) {
+        const [rows] = await pool.execute(`SELECT
+         ps.supplier_id,
+         s.name AS supplier_name,
+         s.phone AS supplier_phone,
+         s.email AS supplier_email,
+         ps.supplier_sku,
+         ps.last_purchase_price
+       FROM catalog_product_suppliers ps
+       INNER JOIN catalog_suppliers s ON s.id = ps.supplier_id
+       WHERE ps.product_id = ?
+       ORDER BY s.name ASC`, [productId]);
+        return rows;
+    }
+    async replaceProductSuppliers(productId, links) {
+        const connection = await pool.getConnection();
+        try {
+            await connection.beginTransaction();
+            await this.assertProductExists(productId, connection);
+            if (links.length) {
+                for (const link of links) {
+                    await this.assertSupplierExists(link.supplierId, connection);
+                }
+            }
+            await connection.execute('DELETE FROM catalog_product_suppliers WHERE product_id = ?', [productId]);
+            for (const link of links) {
+                await connection.execute(`INSERT INTO catalog_product_suppliers (product_id, supplier_id, supplier_sku, last_purchase_price)
+           VALUES (?, ?, ?, ?)`, [
+                    productId,
+                    link.supplierId,
+                    nullable(link.supplierSku),
+                    link.lastPurchasePrice ?? null,
+                ]);
+            }
+            await connection.commit();
+        }
+        catch (error) {
+            await connection.rollback();
+            throw error;
+        }
+        finally {
+            connection.release();
+        }
+        return this.listProductSuppliers(productId);
+    }
     async addBarcode(productId, barcode, isPrimary) {
         await pool.execute(`INSERT INTO catalog_product_barcodes (product_id, barcode, is_primary)
        VALUES (?, ?, ?)`, [productId, barcode, isPrimary]);
+    }
+    async assertProductExists(productId, connection) {
+        const [rows] = await connection.execute('SELECT id FROM catalog_products WHERE id = ? LIMIT 1', [productId]);
+        if (!rows.length) {
+            throw new AppError(404, 'NOT_FOUND', `Product ${productId} not found`);
+        }
+    }
+    async assertSupplierExists(supplierId, connection) {
+        const [rows] = await connection.execute('SELECT id FROM catalog_suppliers WHERE id = ? AND is_active = TRUE LIMIT 1', [supplierId]);
+        if (!rows.length) {
+            throw new AppError(404, 'NOT_FOUND', `Supplier ${supplierId} not found`);
+        }
     }
 }

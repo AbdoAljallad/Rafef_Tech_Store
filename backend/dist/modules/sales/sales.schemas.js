@@ -59,6 +59,12 @@ export const invoiceListQuerySchema = z.object({
     dateFrom: dateFilterSchema,
     dateTo: dateFilterSchema,
 }).passthrough();
-export const invoiceApproveSchema = z.object({ approve: z.literal(true) });
+export const invoiceApproveSchema = z.object({
+    approve: z.literal(true),
+    paymentAccountId: idSchema.optional().nullable(),
+    paymentMethodId: idSchema.optional().nullable(),
+    paymentAmount: moneySchema.optional().nullable(),
+    paymentReference: optionalText,
+});
 export const invoiceVoidSchema = z.object({ reason: optionalText });
 export const returnCreateSchema = z.object({ invoiceId: idSchema, lines: z.array(z.object({ productId: idSchema, quantity: qtySchema })).min(1) });

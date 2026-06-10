@@ -7,6 +7,7 @@ import type { DataTableColumn } from '../../shared/components/DataTable/DataTabl
 import { catalogApi } from '../../modules/catalog/api/catalog.api';
 import { getAvailableQuantity, getReorderThreshold, hasAvailableStock } from '../../modules/catalog/utils/stockAvailability';
 import { crmApi } from '../../modules/crm/api/crm.api';
+import financeApi from '../../modules/finance/api/finance.api';
 import { repairApi } from '../../modules/repair/api/repair.api';
 import { salesApi } from '../../modules/sales/api/sales.api';
 import { formatSalesMoney, getSalesErrorMessage } from '../../modules/sales/utils/salesPresentation';
@@ -111,6 +112,9 @@ export function PosPage() {
   const [isWalkIn, setIsWalkIn] = useState(true);
   const [customerId, setCustomerId] = useState('');
   const [amountReceived, setAmountReceived] = useState('');
+  const [paymentMethodId, setPaymentMethodId] = useState('');
+  const [paymentAccountId, setPaymentAccountId] = useState('');
+  const [paymentReference, setPaymentReference] = useState('');
   const [calculatorExpression, setCalculatorExpression] = useState('');
   const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -136,6 +140,16 @@ export function PosPage() {
     queryKey: ['catalog-categories'],
     queryFn: () => catalogApi.listCategories(),
   });
+  const paymentMethodsQuery = useQuery({
+    queryKey: ['finance-methods', 'pos'],
+    queryFn: () => financeApi.listMethods(),
+    enabled: documentType === 'invoice',
+  });
+  const paymentAccountsQuery = useQuery({
+    queryKey: ['finance-accounts', 'pos'],
+    queryFn: () => financeApi.listAccounts(),
+    enabled: documentType === 'invoice',
+  });
   const repairBillingQuery = useQuery({
     queryKey: ['repair-pos-billing', repairOrderIdParam],
     queryFn: () => repairApi.getOrderBilling(repairOrderIdParam as number),
@@ -149,7 +163,7 @@ export function PosPage() {
     },
   });
   const approveInvoice = useMutation({
-    mutationFn: (id: number) => salesApi.approveInvoice(id),
+    mutationFn: ({ id, payload }: { id: number; payload?: Parameters<typeof salesApi.approveInvoice>[1] }) => salesApi.approveInvoice(id, payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['sales', 'invoices'] });
       await queryClient.invalidateQueries({ queryKey: ['products'] });
@@ -162,6 +176,12 @@ export function PosPage() {
     () => new Map((productsQuery.data?.items ?? []).map((product) => [product.id, product])),
     [productsQuery.data?.items],
   );
+  const paymentMethods = paymentMethodsQuery.data?.items ?? [];
+  const paymentAccounts = paymentAccountsQuery.data?.items ?? [];
+  const selectedPaymentMethod = useMemo(
+    () => paymentMethods.find((method) => String(method.id) === paymentMethodId) ?? null,
+    [paymentMethodId, paymentMethods],
+  );
 
   useEffect(() => {
     if (isWalkIn && !isRepairCustomerLocked) {
@@ -173,8 +193,20 @@ export function PosPage() {
   useEffect(() => {
     if (documentType === 'quote') {
       setAmountReceived('');
+      setPaymentMethodId('');
+      setPaymentAccountId('');
+      setPaymentReference('');
     }
   }, [documentType]);
+
+  useEffect(() => {
+    if (!selectedPaymentMethod?.linked_account_id) {
+      return;
+    }
+    if (!paymentAccountId) {
+      setPaymentAccountId(String(selectedPaymentMethod.linked_account_id));
+    }
+  }, [paymentAccountId, selectedPaymentMethod?.linked_account_id]);
 
   useEffect(() => {
     const billing = repairBillingQuery.data?.billing;
@@ -556,7 +588,15 @@ export function PosPage() {
 
       if (options.approveAfterCreate && documentType === 'invoice') {
         try {
-          await approveInvoice.mutateAsync(invoice.id);
+          await approveInvoice.mutateAsync({
+            id: invoice.id,
+            payload: {
+              paymentMethodId: paymentMethodId ? Number(paymentMethodId) : null,
+              paymentAccountId: paymentAccountId ? Number(paymentAccountId) : null,
+              paymentAmount: subtotal,
+              paymentReference: paymentReference.trim() || null,
+            },
+          });
           navigate(`/sales/invoices/${invoice.id}`);
           return;
         } catch {
@@ -844,6 +884,32 @@ export function PosPage() {
                     value={amountReceived}
                     onChange={(event) => setAmountReceived(event.target.value)}
                   />
+                  <Select label={t('sales.fields.paymentMethod')} value={paymentMethodId} onChange={(event) => setPaymentMethodId(event.target.value)}>
+                    <option value="">{t('sales.fields.paymentMethod')}</option>
+                    {paymentMethods.map((method) => (
+                      <option key={method.id} value={method.id}>
+                        {method.name}
+                      </option>
+                    ))}
+                  </Select>
+                  <Select label={t('sales.fields.paymentAccount')} value={paymentAccountId} onChange={(event) => setPaymentAccountId(event.target.value)}>
+                    <option value="">{t('sales.fields.paymentAccount')}</option>
+                    {paymentAccounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.name} ({account.code})
+                      </option>
+                    ))}
+                  </Select>
+                  <Input
+                    label={t('sales.fields.paymentReference')}
+                    value={paymentReference}
+                    onChange={(event) => setPaymentReference(event.target.value)}
+                  />
+                  {selectedPaymentMethod?.linked_account_name ? (
+                    <div className="notice">
+                      {selectedPaymentMethod.linked_account_name}
+                    </div>
+                  ) : null}
                   <div className="total-line"><span>{t('sales.fields.changeDue')}</span><strong>{formatSalesMoney(changeDue, language)}</strong></div>
                 </>
               ) : null}

@@ -7,6 +7,7 @@ type FinanceAccountRow = RowDataPacket & {
   name: string;
   type: string;
   provider: string | null;
+  provider_code: string | null;
   currency: string;
   account_number: string | null;
   opening_balance: string;
@@ -30,6 +31,7 @@ type FinanceMethodRow = RowDataPacket & {
   name: string;
   method_type: string;
   provider: string | null;
+  provider_code: string | null;
   linked_account_id: number | null;
   linked_account_code: string | null;
   linked_account_name: string | null;
@@ -59,6 +61,21 @@ type FinanceTransactionRow = RowDataPacket & {
   method_name: string | null;
 };
 
+type FinanceProviderRow = RowDataPacket & {
+  id: number;
+  code: string;
+  provider_type: string;
+  name: string;
+  short_name: string | null;
+  parent_code: string | null;
+  country_code: string;
+  logo_url: string | null;
+  source_url: string | null;
+  notes: string | null;
+  sort_order: number;
+  is_active: number;
+};
+
 function numeric(value: string | number | null | undefined) {
   const parsed = Number(value ?? 0);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -71,6 +88,7 @@ const accountProjection = `
     a.name,
     a.type,
     a.provider,
+    a.provider_code,
     a.currency,
     a.account_number,
     a.opening_balance,
@@ -131,6 +149,7 @@ export class FinanceRepository {
     name: string;
     type: string;
     provider?: string | null;
+    providerCode?: string | null;
     currency: string;
     accountNumber?: string | null;
     openingBalance?: number;
@@ -144,6 +163,7 @@ export class FinanceRepository {
          name,
          type,
          provider,
+         provider_code,
          currency,
          account_number,
          opening_balance,
@@ -151,12 +171,13 @@ export class FinanceRepository {
          notes,
          created_by_user_id
        )
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         input.code,
         input.name,
         input.type,
         input.provider ?? null,
+        input.providerCode ?? null,
         input.currency,
         input.accountNumber ?? null,
         input.openingBalance ?? 0,
@@ -192,6 +213,7 @@ export class FinanceRepository {
     name: string;
     methodType: string;
     provider?: string | null;
+    providerCode?: string | null;
     linkedAccountId?: number | null;
     notes?: string | null;
     createdBy?: number;
@@ -202,16 +224,18 @@ export class FinanceRepository {
          name,
          method_type,
          provider,
+         provider_code,
          linked_account_id,
          notes,
          created_by_user_id
        )
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         input.code,
         input.name,
         input.methodType,
         input.provider ?? null,
+        input.providerCode ?? null,
         input.linkedAccountId ?? null,
         input.notes ?? null,
         input.createdBy ?? null,
@@ -229,6 +253,7 @@ export class FinanceRepository {
          m.name,
          m.method_type,
          m.provider,
+         m.provider_code,
          m.linked_account_id,
          a.code AS linked_account_code,
          a.name AS linked_account_name,
@@ -251,6 +276,7 @@ export class FinanceRepository {
          m.name,
          m.method_type,
          m.provider,
+         m.provider_code,
          m.linked_account_id,
          a.code AS linked_account_code,
          a.name AS linked_account_name,
@@ -502,6 +528,44 @@ export class FinanceRepository {
       [input.closedAt, input.closedBy ?? null, input.totals ? JSON.stringify(input.totals) : null],
     );
     return { id: result.insertId };
+  }
+
+  async listProviders(params: { providerType?: string; search?: string } = {}) {
+    const conditions = ['is_active = TRUE'];
+    const values: string[] = [];
+
+    if (params.providerType?.trim()) {
+      conditions.push('provider_type = ?');
+      values.push(params.providerType.trim());
+    }
+
+    if (params.search?.trim()) {
+      conditions.push('(name LIKE ? OR short_name LIKE ? OR code LIKE ?)');
+      const term = `%${params.search.trim()}%`;
+      values.push(term, term, term);
+    }
+
+    const [rows] = await pool.execute<FinanceProviderRow[]>(
+      `SELECT
+         id,
+         code,
+         provider_type,
+         name,
+         short_name,
+         parent_code,
+         country_code,
+         logo_url,
+         source_url,
+         notes,
+         sort_order,
+         is_active
+       FROM finance_provider_catalog
+       WHERE ${conditions.join(' AND ')}
+       ORDER BY provider_type ASC, sort_order ASC, name ASC`,
+      values,
+    );
+
+    return rows;
   }
 
   async getDashboard() {

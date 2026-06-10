@@ -101,6 +101,9 @@ export class CatalogService {
     listServices(module) {
         return this.catalogRepository.listServices(module);
     }
+    listSuppliers() {
+        return this.catalogRepository.listSuppliers();
+    }
     async createSupplier(input, actorUserId, ipAddress) {
         const supplier = await this.catalogRepository.createSupplier(input, actorUserId);
         await this.auditService.log({
@@ -113,5 +116,23 @@ export class CatalogService {
             ipAddress,
         });
         return supplier;
+    }
+    async listProductSuppliers(productId) {
+        await this.getProduct(productId);
+        return this.catalogRepository.listProductSuppliers(productId);
+    }
+    async replaceProductSuppliers(productId, suppliers, actorUserId, ipAddress) {
+        await this.getProduct(productId);
+        const updated = await this.catalogRepository.replaceProductSuppliers(productId, suppliers);
+        await this.auditService.log({
+            actorUserId,
+            actionCode: 'catalog.product.suppliers_updated',
+            module: 'catalog',
+            entityType: 'catalog_product_suppliers',
+            entityId: productId,
+            newValues: suppliers,
+            ipAddress,
+        });
+        return updated;
     }
 }

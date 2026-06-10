@@ -48,6 +48,7 @@ export const paymentAccountCreateSchema = z.object({
   name: z.string().trim().min(1),
   type: financeAccountTypeSchema,
   provider: optionalText,
+  providerCode: z.string().trim().min(1).optional().nullable(),
   currency: currencySchema,
   accountNumber: optionalText,
   openingBalance: moneySchema.optional().default(0),
@@ -60,9 +61,15 @@ export const paymentMethodCreateSchema = z.object({
   name: z.string().trim().min(1),
   methodType: financeMethodTypeSchema,
   provider: optionalText,
+  providerCode: z.string().trim().min(1).optional().nullable(),
   linkedAccountId: idSchema.optional().nullable(),
   notes: optionalText,
 });
+
+export const providerCatalogQuerySchema = z.object({
+  providerType: z.string().trim().optional(),
+  search: z.string().trim().optional(),
+}).passthrough();
 
 export const transactionCreateSchema = z.object({
   accountId: idSchema.optional().nullable(),

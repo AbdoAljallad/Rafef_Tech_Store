@@ -77,8 +77,18 @@ export class SalesService {
     return updated;
   }
 
-  async approveInvoice(id: number, actorUserId: number, ip?: string | null) {
-    const updated = await this.salesRepo.approveInvoice(id, actorUserId);
+  async approveInvoice(
+    id: number,
+    actorUserId: number,
+    payload?: {
+      paymentAccountId?: number | null;
+      paymentMethodId?: number | null;
+      paymentAmount?: number | null;
+      paymentReference?: string | null;
+    },
+    ip?: string | null,
+  ) {
+    const updated = await this.salesRepo.approveInvoice(id, actorUserId, payload);
     await this.auditService.log({ actorUserId, actionCode: 'sales.invoice.approved', module: 'sales', entityType: 'sales_invoices', entityId: id, newValues: updated, ipAddress: ip });
     return updated;
   }

@@ -1,7 +1,14 @@
 import { AppError } from '../../shared/errors/AppError.js';
 import { AuditService } from '../audit/audit.service.js';
 import { CatalogRepository } from './catalog.repository.js';
-import type { CategoryCreateInput, PriceChangeInput, ProductCreateInput, ProductUpdateInput, SupplierCreateInput } from './catalog.schemas.js';
+import type {
+  CategoryCreateInput,
+  PriceChangeInput,
+  ProductCreateInput,
+  ProductSupplierLinkInput,
+  ProductUpdateInput,
+  SupplierCreateInput,
+} from './catalog.schemas.js';
 
 function isDuplicateKey(error: unknown) {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ER_DUP_ENTRY';
@@ -106,6 +113,10 @@ export class CatalogService {
     return this.catalogRepository.listServices(module);
   }
 
+  listSuppliers() {
+    return this.catalogRepository.listSuppliers();
+  }
+
   async createSupplier(input: SupplierCreateInput, actorUserId: number, ipAddress?: string | null) {
     const supplier = await this.catalogRepository.createSupplier(input, actorUserId);
     await this.auditService.log({
@@ -118,5 +129,25 @@ export class CatalogService {
       ipAddress,
     });
     return supplier;
+  }
+
+  async listProductSuppliers(productId: number) {
+    await this.getProduct(productId);
+    return this.catalogRepository.listProductSuppliers(productId);
+  }
+
+  async replaceProductSuppliers(productId: number, suppliers: ProductSupplierLinkInput[], actorUserId: number, ipAddress?: string | null) {
+    await this.getProduct(productId);
+    const updated = await this.catalogRepository.replaceProductSuppliers(productId, suppliers);
+    await this.auditService.log({
+      actorUserId,
+      actionCode: 'catalog.product.suppliers_updated',
+      module: 'catalog',
+      entityType: 'catalog_product_suppliers',
+      entityId: productId,
+      newValues: suppliers,
+      ipAddress,
+    });
+    return updated;
   }
 }

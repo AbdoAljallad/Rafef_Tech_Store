@@ -4,6 +4,7 @@ import { asyncHandler } from '../../shared/http/asyncHandler.js';
 import {
   paymentAccountCreateSchema,
   paymentMethodCreateSchema,
+  providerCatalogQuerySchema,
   transactionCreateSchema,
   expenseCreateSchema,
   refundCreateSchema,
@@ -19,6 +20,10 @@ const svc = new FinanceService();
 router.use(requireAuth);
 
 router.get('/finance/dashboard', requirePermission('finance.accounts.view'), asyncHandler(async (_req, res) => res.json(await svc.getDashboard())));
+router.get('/finance/providers', requirePermission('finance.accounts.view'), asyncHandler(async (req, res) => {
+  const filters = providerCatalogQuerySchema.parse(req.query);
+  res.json({ items: await svc.listProviders({ providerType: filters.providerType, search: filters.search }) });
+}));
 router.get('/finance/accounts', requirePermission('finance.accounts.view'), asyncHandler(async (_req, res) => res.json({ items: await svc.listAccounts() })));
 router.post('/finance/accounts', requirePermission('finance.accounts.manage'), asyncHandler(async (req, res) => res.status(201).json({
   account: await svc.createAccount({

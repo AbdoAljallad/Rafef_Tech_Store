@@ -1,5 +1,17 @@
 import { httpClient } from '../../../shared/api/httpClient';
-import type { Category, CategoryRequest, Product, ProductRequest, ProductUpdateRequest, Service, SupplierRequest, Unit } from '../types/catalog.types';
+import type {
+  Category,
+  CategoryRequest,
+  Product,
+  ProductRequest,
+  ProductSupplierLink,
+  ProductSupplierRequest,
+  ProductUpdateRequest,
+  Service,
+  Supplier,
+  SupplierRequest,
+  Unit,
+} from '../types/catalog.types';
 
 type ProductListOptions = {
   page?: number;
@@ -46,11 +58,20 @@ export const catalogApi = {
   listUnits() {
     return httpClient.get<{ items: Unit[] }>('/api/units');
   },
+  listSuppliers() {
+    return httpClient.get<{ items: Supplier[] }>('/api/suppliers');
+  },
   listServices(module?: string) {
     const params = module ? `?module=${encodeURIComponent(module)}` : '';
     return httpClient.get<{ items: Service[] }>(`/api/services${params}`);
   },
   createSupplier(payload: SupplierRequest) {
     return httpClient.post<{ supplier: { id: number; name: string } }>('/api/suppliers', payload);
+  },
+  getProductSuppliers(id: number | string) {
+    return httpClient.get<{ items: ProductSupplierLink[] }>(`/api/products/${id}/suppliers`);
+  },
+  updateProductSuppliers(id: number | string, payload: { suppliers: ProductSupplierRequest[] }) {
+    return httpClient.put<{ items: ProductSupplierLink[] }>(`/api/products/${id}/suppliers`, payload);
   },
 };

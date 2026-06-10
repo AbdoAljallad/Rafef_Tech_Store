@@ -1,6 +1,7 @@
 import { httpClient } from '../../../shared/api/httpClient';
 import type {
   SalesInvoice,
+  SalesInvoiceApprovePayload,
   SalesInvoiceCreatePayload,
   SalesInvoiceListFilters,
   SalesInvoiceListResponse,
@@ -47,8 +48,8 @@ export const salesApi = {
   updateInvoice(id: number | string, payload: SalesInvoicePrintPayload) {
     return httpClient.patch<{ invoice: SalesInvoice }>(`/api/sales/invoices/${id}`, payload);
   },
-  approveInvoice(id: number | string) {
-    return httpClient.post<{ invoice: SalesInvoice }>(`/api/sales/invoices/${id}/approve`, { approve: true });
+  approveInvoice(id: number | string, payload?: SalesInvoiceApprovePayload) {
+    return httpClient.post<{ invoice: SalesInvoice }>(`/api/sales/invoices/${id}/approve`, { approve: true, ...(payload ?? {}) });
   },
   voidInvoice(id: number | string, payload: any) {
     return httpClient.post<{ invoice: SalesInvoice }>(`/api/sales/invoices/${id}/void`, payload);
