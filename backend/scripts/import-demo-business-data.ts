@@ -13,6 +13,19 @@ function money(value: number) {
   return Number(value.toFixed(2));
 }
 
+function getRequiredCustomerCount() {
+  const highestInvoiceCustomerIndex = demoInvoices.reduce<number>(
+    (maxIndex, invoice) => Math.max(maxIndex, invoice.customerIndex ?? -1),
+    -1,
+  );
+  const highestRepairCustomerIndex = demoRepairOrders.reduce<number>(
+    (maxIndex, order) => Math.max(maxIndex, order.customerIndex),
+    -1,
+  );
+
+  return Math.max(highestInvoiceCustomerIndex, highestRepairCustomerIndex, 1) + 1;
+}
+
 async function getConnection() {
   return mysql.createConnection({
     host: env('DB_HOST', env('MYSQL_HOST', '127.0.0.1')),
@@ -44,12 +57,13 @@ async function getLookupMap(conn: mysql.Connection, table: string, keyColumn: st
 }
 
 async function getActiveCustomers(conn: mysql.Connection) {
+  const requiredCount = getRequiredCustomerCount();
   const [rows] = await conn.execute<mysql.RowDataPacket[]>(
-    `SELECT id, name FROM crm_customers WHERE is_active = TRUE ORDER BY id LIMIT 10`,
+    `SELECT id, name FROM crm_customers WHERE is_active = TRUE ORDER BY id LIMIT ${requiredCount}`,
   );
 
-  if (rows.length < 2) {
-    throw new Error('At least two active customers are required before importing demo business data.');
+  if (rows.length < requiredCount) {
+    throw new Error(`At least ${requiredCount} active customers are required before importing demo business data.`);
   }
 
   return rows.map((row) => ({
@@ -152,7 +166,7 @@ async function ensureProductSeedData(conn: mysql.Connection, actorUserId: number
         `INSERT INTO inventory_stock_movements (
           product_id, movement_type, quantity, unit_cost, source_type, source_id, note, created_by_user_id
         )
-        VALUES (?, 'adjustment_in', ?, ?, 'demo_seed', ?, 'Начальный демонстрационный остаток', ?)`,
+        VALUES (?, 'adjustment_in', ?, ?, 'demo_seed', ?, 'Initial demo stock balance', ?)`,
         [productId, product.quantityOnHand, product.purchasePrice, productId, actorUserId],
       );
     }
@@ -167,6 +181,8 @@ async function ensureInvoiceSeedData(
   customers: Array<{ id: number; name: string }>,
   productIds: Map<string, number>,
 ) {
+  const productSeedBySku = new Map(demoProducts.map((product) => [product.sku, product]));
+
   for (const invoice of demoInvoices) {
     const [existingRows] = await conn.execute<mysql.RowDataPacket[]>(
       `SELECT id FROM sales_invoices WHERE invoice_code = ? LIMIT 1`,
@@ -213,7 +229,7 @@ async function ensureInvoiceSeedData(
         throw new Error(`Missing demo product for invoice line: ${line.sku}`);
       }
 
-      const productSeed = demoProducts.find((product) => product.sku === line.sku);
+      const productSeed = productSeedBySku.get(line.sku);
       await conn.execute(
         `INSERT INTO sales_invoice_lines (
           invoice_id, product_id, quantity, unit_price, unit_cost, line_total
@@ -274,7 +290,7 @@ async function ensureRepairSeedData(
           customer_id, category_id, brand_id, model_id, device_name, serial_no, imei, notes
         )
         VALUES (?, ?, ?, NULL, ?, ?, NULL, ?)`,
-        [customer.id, categoryId, brandId, order.deviceName, order.serialNo, 'Демонстрационное устройство для теста интерфейса'],
+        [customer.id, categoryId, brandId, order.deviceName, order.serialNo, 'Demo device created for interface testing'],
       );
       deviceId = deviceResult.insertId;
     }
@@ -301,7 +317,7 @@ async function ensureRepairSeedData(
       `INSERT INTO repair_order_status_history (
         repair_order_id, old_status, new_status, note, changed_by_user_id
       )
-      VALUES (?, NULL, 'new', 'Демонстрационный заказ создан', ?)`,
+      VALUES (?, NULL, 'new', 'Demo repair order created', ?)`,
       [orderId, actorUserId],
     );
 
@@ -310,7 +326,7 @@ async function ensureRepairSeedData(
         `INSERT INTO repair_order_status_history (
           repair_order_id, old_status, new_status, note, changed_by_user_id
         )
-        VALUES (?, 'new', ?, 'Демонстрационный переход статуса', ?)`,
+        VALUES (?, 'new', ?, 'Demo repair status transition', ?)`,
         [orderId, order.status, actorUserId],
       );
     }
