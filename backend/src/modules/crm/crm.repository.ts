@@ -155,9 +155,9 @@ function deriveLegacyFields(contacts: ContactCreateInput[]) {
 }
 
 export class CrmRepository {
-  async listCustomers(params: { search?: string; offset: number; limit: number }) {
+  async listCustomers(params: { search?: string }) {
     const search = params.search?.trim();
-    const values: Array<string | number> = [];
+    const values: string[] = [];
     let where = 'WHERE c.is_active = TRUE';
 
     if (search) {
@@ -170,8 +170,7 @@ export class CrmRepository {
       `SELECT c.*
        FROM crm_customers c
        ${where}
-       ORDER BY c.created_at DESC
-       LIMIT ${params.limit} OFFSET ${params.offset}`,
+       ORDER BY c.id DESC`,
       values,
     );
     return rows;

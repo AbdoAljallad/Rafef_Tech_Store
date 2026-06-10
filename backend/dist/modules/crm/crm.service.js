@@ -1,6 +1,71 @@
 import { AppError } from '../../shared/errors/AppError.js';
 import { AuditService } from '../audit/audit.service.js';
 import { CrmRepository } from './crm.repository.js';
+const textCollators = {
+    ar: new Intl.Collator('ar', { sensitivity: 'base', numeric: true, ignorePunctuation: true }),
+    en: new Intl.Collator('en', { sensitivity: 'base', numeric: true, ignorePunctuation: true }),
+    ru: new Intl.Collator('ru', { sensitivity: 'base', numeric: true, ignorePunctuation: true }),
+    generic: new Intl.Collator(undefined, { sensitivity: 'base', numeric: true, ignorePunctuation: true }),
+};
+function getScriptPriority(value) {
+    const normalized = value.trim();
+    for (const char of normalized) {
+        if (/\p{Script=Arabic}/u.test(char)) {
+            return 0;
+        }
+        if (/\p{Script=Latin}/u.test(char)) {
+            return 1;
+        }
+        if (/\p{Script=Cyrillic}/u.test(char)) {
+            return 2;
+        }
+        if (/\p{Number}/u.test(char)) {
+            return 3;
+        }
+        if (/\p{Letter}/u.test(char)) {
+            return 4;
+        }
+    }
+    return 5;
+}
+function compareTextByLanguagePriority(leftValue, rightValue, direction = 'asc') {
+    const left = leftValue.trim();
+    const right = rightValue.trim();
+    const leftPriority = getScriptPriority(left);
+    const rightPriority = getScriptPriority(right);
+    let result = 0;
+    if (leftPriority !== rightPriority) {
+        result = leftPriority - rightPriority;
+    }
+    else {
+        const collator = leftPriority === 0 ? textCollators.ar :
+            leftPriority === 1 ? textCollators.en :
+                leftPriority === 2 ? textCollators.ru :
+                    textCollators.generic;
+        result = collator.compare(left, right);
+        if (result === 0) {
+            result = textCollators.generic.compare(left, right);
+        }
+    }
+    return direction === 'asc' ? result : -result;
+}
+function compareCustomers(left, right, sortMode) {
+    switch (sortMode) {
+        case 'name-asc':
+            return compareTextByLanguagePriority(left.name, right.name, 'asc');
+        case 'name-desc':
+            return compareTextByLanguagePriority(left.name, right.name, 'desc');
+        case 'code-asc':
+            return textCollators.generic.compare(left.customer_code, right.customer_code);
+        case 'code-desc':
+            return textCollators.generic.compare(right.customer_code, left.customer_code);
+        case 'created-asc':
+            return left.created_at.getTime() - right.created_at.getTime();
+        case 'created-desc':
+        default:
+            return right.created_at.getTime() - left.created_at.getTime();
+    }
+}
 export class CrmService {
     crmRepository;
     auditService;
@@ -9,11 +74,11 @@ export class CrmService {
         this.auditService = auditService;
     }
     async listCustomers(params) {
-        const [items, total] = await Promise.all([
-            this.crmRepository.listCustomers(params),
-            this.crmRepository.countCustomers({ search: params.search }),
-        ]);
-        return { items, total };
+        const items = await this.crmRepository.listCustomers({ search: params.search });
+        const sortMode = params.sort ?? 'created-desc';
+        const sortedItems = [...items].sort((left, right) => compareCustomers(left, right, sortMode));
+        const pageItems = sortedItems.slice(params.offset, params.offset + params.limit);
+        return { items: pageItems, total: sortedItems.length };
     }
     async getCustomer(id) {
         const customer = await this.crmRepository.findCustomerDetailById(id);

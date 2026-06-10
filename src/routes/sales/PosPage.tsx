@@ -36,13 +36,13 @@ export function PosPage() {
 
   async function handleBarcodeLookup() {
     setErrorMessage(null);
-    if (!barcode) return setErrorMessage('Enter a barcode');
+    if (!barcode) return setErrorMessage('Введите штрихкод');
     try {
       const res = await catalogApi.lookupBarcode(barcode);
       addProductToCart(res.product);
       setBarcode('');
     } catch (e: any) {
-      setErrorMessage('Product not found for barcode');
+      setErrorMessage('Товар по этому штрихкоду не найден');
     }
   }
 
@@ -54,14 +54,14 @@ export function PosPage() {
 
   async function handleCreateInvoice(values: any) {
     setErrorMessage(null);
-    if (cart.length === 0) return setErrorMessage('Cart is empty');
+    if (cart.length === 0) return setErrorMessage('Корзина пуста');
     const lines = cart.map((it) => ({ productId: it.product.id, quantity: it.qty, unitPrice: Number(it.product.current_sale_price ?? it.product.currentSalePrice ?? 1) }));
     const payload = { customerId: values.isWalkIn ? null : (values.customerId ? Number(values.customerId) : null), isWalkIn: values.isWalkIn, lines };
     let created;
     try {
       created = await createInvoice.mutateAsync(payload);
     } catch (e: any) {
-      setErrorMessage(e?.message ?? 'Failed to create invoice');
+      setErrorMessage(e?.message ?? 'Не удалось создать счёт');
       return;
     }
     const invoiceId = created.invoice?.id;
@@ -76,7 +76,7 @@ export function PosPage() {
       } catch (e: any) {
         // if backend indicates insufficient stock, show error and navigate to invoice detail for manual handling
         const body = e?.response ?? e;
-        const message = e?.message ?? 'Approval failed';
+        const message = e?.message ?? 'Не удалось провести счёт';
         setErrorMessage(message);
         setCreatedInvoice({ id: invoiceId });
         window.location.href = `/sales/invoices/${invoiceId}`;
@@ -164,7 +164,7 @@ export function PosPage() {
             )}
           </div>
 
-          <div className="totals" style={{ border: '1px solid #ddd', padding: 12, borderRadius: 6, background: '#fff' }}>
+          <div className="totals totals-panel">
             <div className="total-line"><strong>Итого:</strong><div className="total-amount">{fmt(subtotal)}</div></div>
             <div className="actions-vertical">
               <Button onClick={clearCart}>Очистить корзину</Button>
@@ -179,12 +179,15 @@ export function PosPage() {
         .pos-left{padding:8px}
         .pos-center{padding:8px}
         .pos-right{padding:8px}
+        .customer-box,.totals-panel{border:1px solid var(--theme-action-border);border-radius:18px;background:linear-gradient(145deg, var(--theme-panel-fill-start), var(--theme-panel-fill-end));box-shadow:var(--theme-panel-shadow);padding:12px}
+        .customer-box{display:grid;gap:0.85rem}
         .cart-table{width:100%;border-collapse:collapse}
-        .cart-table th,.cart-table td{padding:6px;border-bottom:1px solid #eee}
+        .cart-table th,.cart-table td{padding:6px;border-bottom:1px solid var(--border)}
         .total-line{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-        .total-amount{font-size:1.6rem;color:#111}
+        .total-amount{font-size:1.6rem;color:var(--tech-text)}
         .actions-vertical > *{display:block;margin-bottom:8px}
-        .muted{font-size:0.85rem;color:#666}
+        .receipt-link{color:var(--tech-accent);font-weight:800;text-decoration:none}
+        .muted{font-size:0.85rem;color:var(--color-text-muted)}
       `}</style>
     </div>
   );

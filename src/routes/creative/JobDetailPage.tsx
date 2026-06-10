@@ -18,56 +18,61 @@ export function JobDetailPage() {
   async function addLine() {
     if (!id) return;
     await creativeApi.addJobLine(Number(id), { description: lineDesc, quantity, unitPrice });
-    const r = await creativeApi.getJob(Number(id)); setJob(r.job);
-    setLineDesc(''); setQuantity(1); setUnitPrice(0);
+    const response = await creativeApi.getJob(Number(id));
+    setJob(response.job);
+    setLineDesc('');
+    setQuantity(1);
+    setUnitPrice(0);
   }
 
   async function createTask() {
     if (!id || !vendorId) return;
-    await creativeApi.createVendorTask(Number(id), { vendorId, jobId: Number(id), externalTaskCode: null, notes: 'Created from UI' });
-    const r = await creativeApi.getJob(Number(id)); setJob(r.job);
+    await creativeApi.createVendorTask(Number(id), { vendorId, jobId: Number(id), externalTaskCode: null, notes: 'Создано из интерфейса' });
+    const response = await creativeApi.getJob(Number(id));
+    setJob(response.job);
   }
 
   async function changeStatus() {
     if (!id) return;
-    await creativeApi.changeJobStatus(Number(id), { toStatus: statusTo, notes: 'Changed from UI' });
-    const r = await creativeApi.getJob(Number(id)); setJob(r.job);
+    await creativeApi.changeJobStatus(Number(id), { toStatus: statusTo, notes: 'Изменено из интерфейса' });
+    const response = await creativeApi.getJob(Number(id));
+    setJob(response.job);
     setStatusTo('');
   }
 
-  if (!job) return <div>Loading...</div>;
+  if (!job) return <div>Загрузка...</div>;
 
   return (
     <div>
-      <h2>Job {job.job_code}</h2>
-      <div>Title: {job.title}</div>
-      <div>Description: {job.description}</div>
-      <div>Status: {job.status}</div>
+      <h2>Работа {job.job_code}</h2>
+      <div>Название: {job.title}</div>
+      <div>Описание: {job.description}</div>
+      <div>Статус: {job.status}</div>
 
-      <h3>Lines</h3>
-      <ul>{(job.lines||[]).map((l:any)=> <li key={l.id}>{l.description} — {l.quantity} × {l.unit_price}</li>)}</ul>
+      <h3>Позиции</h3>
+      <ul>{(job.lines || []).map((line: any) => <li key={line.id}>{line.description} — {line.quantity} × {line.unit_price}</li>)}</ul>
       <div>
-        <input placeholder="Description" value={lineDesc} onChange={(e)=>setLineDesc(e.target.value)} />
-        <input type="number" value={quantity} onChange={(e)=>setQuantity(Number(e.target.value))} />
-        <input type="number" value={unitPrice} onChange={(e)=>setUnitPrice(Number(e.target.value))} />
-        <button onClick={addLine}>Add Line</button>
+        <input placeholder="Описание" value={lineDesc} onChange={(e) => setLineDesc(e.target.value)} />
+        <input type="number" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} />
+        <input type="number" value={unitPrice} onChange={(e) => setUnitPrice(Number(e.target.value))} />
+        <button onClick={addLine}>Добавить позицию</button>
       </div>
 
-      <h3>Vendor Tasks</h3>
-      <ul>{(job.vendorTasks||[]).map((t:any)=> <li key={t.id}>{t.external_task_code} — {t.notes} — {t.status}</li>)}</ul>
+      <h3>Задачи исполнителям</h3>
+      <ul>{(job.vendorTasks || []).map((task: any) => <li key={task.id}>{task.external_task_code} — {task.notes} — {task.status}</li>)}</ul>
       <div>
-        <select onChange={(e)=>setVendorId(Number(e.target.value))} value={vendorId ?? ''}>
-          <option value=''>Select vendor</option>
-          {vendors.map(v=> <option key={v.id} value={v.id}>{v.name}</option>)}
+        <select onChange={(e) => setVendorId(Number(e.target.value))} value={vendorId ?? ''}>
+          <option value="">Выберите исполнителя</option>
+          {vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.name}</option>)}
         </select>
-        <button onClick={createTask}>Create Vendor Task</button>
+        <button onClick={createTask}>Создать задачу исполнителю</button>
       </div>
 
-      <h3>Status History</h3>
-      <ul>{(job.history||[]).map((h:any)=> <li key={h.id}>{h.from_status} → {h.to_status} — {h.notes} ({h.created_at})</li>)}</ul>
+      <h3>История статусов</h3>
+      <ul>{(job.history || []).map((history: any) => <li key={history.id}>{history.from_status} → {history.to_status} — {history.notes} ({history.created_at})</li>)}</ul>
       <div>
-        <input placeholder="toStatus" value={statusTo} onChange={(e)=>setStatusTo(e.target.value)} />
-        <button onClick={changeStatus}>Change Status</button>
+        <input placeholder="Новый статус" value={statusTo} onChange={(e) => setStatusTo(e.target.value)} />
+        <button onClick={changeStatus}>Изменить статус</button>
       </div>
     </div>
   );

@@ -10,7 +10,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "migrate": "tsx src/database/migrate.ts",
     "seed": "tsx src/database/seed.ts",
-    "db:setup": "npm run migrate && npm run seed"
+    "db:setup": "npm run migrate && npm run seed",
+    "seed:demo-business": "tsx scripts/import-demo-business-data.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

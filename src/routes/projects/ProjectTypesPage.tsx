@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { projectsApi } from '../../modules/projects/api/projects.api';
 import { DataTable } from '../../shared/components/DataTable/DataTable';
 import { FormDrawer } from '../../shared/components/FormDrawer/FormDrawer';
@@ -9,6 +10,7 @@ import { Input } from '../../shared/ui/Input';
 import { Textarea } from '../../shared/ui/Textarea';
 
 export function ProjectTypesPage() {
+  const { t } = useTranslation('app');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [code, setCode] = useState('');
   const [defaultName, setDefaultName] = useState('');
@@ -36,30 +38,32 @@ export function ProjectTypesPage() {
     <>
       <header className="page-header">
         <div>
-          <p className="eyebrow">Projects</p>
-          <h1>Project Types</h1>
+          <p className="eyebrow">{t('projects.module')}</p>
+          <h1>{t('projects.projectTypesTitle')}</h1>
         </div>
-        <Button icon={<Plus size={18} />} onClick={() => setIsCreateOpen(true)}>New Type</Button>
+        <Button icon={<Plus size={18} />} onClick={() => setIsCreateOpen(true)}>
+          {t('projects.newType')}
+        </Button>
       </header>
 
       <DataTable
         rows={typesQuery.data?.items ?? []}
         isLoading={typesQuery.isLoading}
-        emptyText={typesQuery.isError ? 'Failed to load project types' : 'No project types'}
+        emptyText={typesQuery.isError ? t('projects.loadTypesFailed') : t('projects.noTypes')}
         getRowKey={(type) => type.id}
         columns={[
-          { key: 'code', header: 'Code', render: (type) => type.code },
-          { key: 'name', header: 'Name', render: (type) => type.default_name },
-          { key: 'description', header: 'Description', render: (type) => type.description ?? '-' },
+          { key: 'code', header: t('projects.code'), render: (type) => type.code },
+          { key: 'name', header: t('projects.name'), render: (type) => type.default_name },
+          { key: 'description', header: t('projects.description'), render: (type) => type.description ?? '-' },
         ]}
       />
 
-      <FormDrawer title="New Project Type" isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)}>
+      <FormDrawer title={t('projects.newProjectType')} isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)}>
         <form className="entity-form" onSubmit={createType}>
-          <Input label="Code" value={code} onChange={(event) => setCode(event.target.value)} required />
-          <Input label="Name" value={defaultName} onChange={(event) => setDefaultName(event.target.value)} required />
-          <Textarea label="Description" value={description} onChange={(event) => setDescription(event.target.value)} />
-          <Button type="submit" isLoading={createMutation.isPending}>Create Type</Button>
+          <Input label={t('projects.code')} value={code} onChange={(event) => setCode(event.target.value)} required />
+          <Input label={t('projects.name')} value={defaultName} onChange={(event) => setDefaultName(event.target.value)} required />
+          <Textarea label={t('projects.description')} value={description} onChange={(event) => setDescription(event.target.value)} />
+          <Button type="submit" isLoading={createMutation.isPending}>{t('projects.createType')}</Button>
         </form>
       </FormDrawer>
     </>

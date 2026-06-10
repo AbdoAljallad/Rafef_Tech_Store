@@ -3,25 +3,30 @@ import type {
   ContactCreateRequest,
   Customer,
   CustomerCreateRequest,
+  CustomerSortMode,
   CustomerUpdateRequest,
   LocationCreateRequest,
   NoteCreateRequest,
 } from '../types/crm.types';
 
 export const crmApi = {
-  listCustomers(search?: string, pagination?: { page?: number; pageSize?: number }) {
+  listCustomers(search?: string, options?: { page?: number; pageSize?: number; sortMode?: CustomerSortMode }) {
     const params = new URLSearchParams();
 
     if (search) {
       params.set('search', search);
     }
 
-    if (pagination?.page) {
-      params.set('page', String(pagination.page));
+    if (options?.page) {
+      params.set('page', String(options.page));
     }
 
-    if (pagination?.pageSize) {
-      params.set('pageSize', String(pagination.pageSize));
+    if (options?.pageSize) {
+      params.set('pageSize', String(options.pageSize));
+    }
+
+    if (options?.sortMode) {
+      params.set('sort', options.sortMode);
     }
 
     const query = params.toString() ? `?${params.toString()}` : '';

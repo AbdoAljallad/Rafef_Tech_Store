@@ -1,28 +1,30 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import financeApi from '../../modules/finance/api/finance.api';
 
 export function DailyClosingPage() {
-  const [closedAt, setClosedAt] = useState(new Date().toISOString().slice(0,10));
+  const { t } = useTranslation('app');
+  const [closedAt, setClosedAt] = useState(new Date().toISOString().slice(0, 10));
   const [cashIn, setCashIn] = useState('');
   const [cashOut, setCashOut] = useState('');
   const [result, setResult] = useState<any>(null);
 
   async function create() {
     const totals = { cashIn: Number(cashIn), cashOut: Number(cashOut) };
-    const r = await financeApi.createDailyClosing({ closedAt, totals });
-    setResult(r);
+    const response = await financeApi.createDailyClosing({ closedAt, totals });
+    setResult(response);
   }
 
   return (
     <div>
-      <h2>Daily Closing</h2>
+      <h2>{t('finance.dailyClosingTitle')}</h2>
       <div>
-        <input type="date" value={closedAt} onChange={(e) => setClosedAt(e.target.value)} />
-        <input placeholder="Cash In" value={cashIn} onChange={(e) => setCashIn(e.target.value)} />
-        <input placeholder="Cash Out" value={cashOut} onChange={(e) => setCashOut(e.target.value)} />
-        <button onClick={create}>Create</button>
+        <input aria-label={t('finance.date')} type="date" value={closedAt} onChange={(e) => setClosedAt(e.target.value)} />
+        <input aria-label={t('finance.cashIn')} placeholder={t('finance.cashIn')} value={cashIn} onChange={(e) => setCashIn(e.target.value)} />
+        <input aria-label={t('finance.cashOut')} placeholder={t('finance.cashOut')} value={cashOut} onChange={(e) => setCashOut(e.target.value)} />
+        <button onClick={create}>{t('finance.create')}</button>
       </div>
-      {result && <pre>{JSON.stringify(result, null, 2)}</pre>}
+      {result ? <pre>{JSON.stringify(result, null, 2)}</pre> : null}
     </div>
   );
 }

@@ -9,20 +9,24 @@ export function LedgerPage() {
 
   async function create() {
     if (!customerId) return;
-    const r = await financeApi.createLedgerEntry(Number(customerId), { change: Number(change), balanceAfter: Number(balanceAfter), notes: 'UI ledger entry' });
-    setResult(r);
+    const response = await financeApi.createLedgerEntry(Number(customerId), {
+      change: Number(change),
+      balanceAfter: Number(balanceAfter),
+      notes: 'Запись из интерфейса',
+    });
+    setResult(response);
   }
 
   return (
     <div>
-      <h2>Customer Ledger Entry</h2>
+      <h2>Запись в клиентской книге</h2>
       <div>
-        <input placeholder="Customer ID" value={customerId} onChange={(e) => setCustomerId(e.target.value)} />
-        <input placeholder="Change" value={change} onChange={(e) => setChange(e.target.value)} />
-        <input placeholder="Balance After" value={balanceAfter} onChange={(e) => setBalanceAfter(e.target.value)} />
-        <button onClick={create}>Create</button>
+        <input placeholder="ID клиента" value={customerId} onChange={(e) => setCustomerId(e.target.value)} />
+        <input placeholder="Изменение" value={change} onChange={(e) => setChange(e.target.value)} />
+        <input placeholder="Баланс после операции" value={balanceAfter} onChange={(e) => setBalanceAfter(e.target.value)} />
+        <button onClick={create}>Создать</button>
       </div>
-      {result && <pre>{JSON.stringify(result, null, 2)}</pre>}
+      {result ? <pre>{JSON.stringify(result, null, 2)}</pre> : null}
     </div>
   );
 }

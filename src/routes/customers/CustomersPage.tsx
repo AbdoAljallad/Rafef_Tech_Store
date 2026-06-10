@@ -4,7 +4,7 @@ import { useMemo, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { crmApi } from '../../modules/crm/api/crm.api';
 import { CustomerForm } from '../../modules/crm/components/CustomerForm';
-import type { Customer } from '../../modules/crm/types/crm.types';
+import type { Customer, CustomerSortMode } from '../../modules/crm/types/crm.types';
 import type { CustomerFormValues } from '../../modules/crm/validators/customer.schemas';
 import { FormDrawer } from '../../shared/components/FormDrawer/FormDrawer';
 import { DataTable, type DataTableColumn } from '../../shared/components/DataTable/DataTable';
@@ -14,7 +14,7 @@ import { Button } from '../../shared/ui/Button';
 import { Select } from '../../shared/ui/Select';
 
 type ViewMode = 'cards' | 'table';
-type SortMode = 'name-asc' | 'name-desc' | 'code-asc' | 'code-desc' | 'created-desc' | 'created-asc';
+type SortMode = CustomerSortMode;
 
 const toggleButtonBaseStyle: CSSProperties = {
   minWidth: 'auto',
@@ -30,16 +30,78 @@ function getCustomerTypeLabel(customer: Customer) {
   return customer.customer_type === 'business' ? 'Компания' : 'Физ. лицо';
 }
 
+const textCollators = {
+  ar: new Intl.Collator('ar', { sensitivity: 'base', numeric: true, ignorePunctuation: true }),
+  en: new Intl.Collator('en', { sensitivity: 'base', numeric: true, ignorePunctuation: true }),
+  ru: new Intl.Collator('ru', { sensitivity: 'base', numeric: true, ignorePunctuation: true }),
+  generic: new Intl.Collator(undefined, { sensitivity: 'base', numeric: true, ignorePunctuation: true }),
+};
+
+function getScriptPriority(value: string) {
+  const normalized = value.trim();
+
+  for (const char of normalized) {
+    if (/\p{Script=Arabic}/u.test(char)) {
+      return 0;
+    }
+
+    if (/\p{Script=Latin}/u.test(char)) {
+      return 1;
+    }
+
+    if (/\p{Script=Cyrillic}/u.test(char)) {
+      return 2;
+    }
+
+    if (/\p{Number}/u.test(char)) {
+      return 3;
+    }
+
+    if (/\p{Letter}/u.test(char)) {
+      return 4;
+    }
+  }
+
+  return 5;
+}
+
+function compareTextByLanguagePriority(leftValue: string, rightValue: string, direction: 'asc' | 'desc' = 'asc') {
+  const left = leftValue.trim();
+  const right = rightValue.trim();
+  const leftPriority = getScriptPriority(left);
+  const rightPriority = getScriptPriority(right);
+
+  let result = 0;
+
+  if (leftPriority !== rightPriority) {
+    result = leftPriority - rightPriority;
+  } else {
+    const collator =
+      leftPriority === 0 ? textCollators.ar :
+      leftPriority === 1 ? textCollators.en :
+      leftPriority === 2 ? textCollators.ru :
+      textCollators.generic;
+
+    result = collator.compare(left, right);
+
+    if (result === 0) {
+      result = textCollators.generic.compare(left, right);
+    }
+  }
+
+  return direction === 'asc' ? result : -result;
+}
+
 function compareCustomers(left: Customer, right: Customer, sortMode: SortMode) {
   switch (sortMode) {
     case 'name-asc':
-      return left.name.localeCompare(right.name, 'ru');
+      return compareTextByLanguagePriority(left.name, right.name, 'asc');
     case 'name-desc':
-      return right.name.localeCompare(left.name, 'ru');
+      return compareTextByLanguagePriority(left.name, right.name, 'desc');
     case 'code-asc':
-      return left.customer_code.localeCompare(right.customer_code, 'ru');
+      return textCollators.generic.compare(left.customer_code, right.customer_code);
     case 'code-desc':
-      return right.customer_code.localeCompare(left.customer_code, 'ru');
+      return textCollators.generic.compare(right.customer_code, left.customer_code);
     case 'created-asc':
       return new Date(left.created_at).getTime() - new Date(right.created_at).getTime();
     case 'created-desc':
@@ -63,8 +125,8 @@ export function CustomersPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const customersQuery = useQuery({
-    queryKey: ['customers', search, page, pageSize],
-    queryFn: () => crmApi.listCustomers(search, { page, pageSize }),
+    queryKey: ['customers', search, sortMode, page, pageSize],
+    queryFn: () => crmApi.listCustomers(search, { page, pageSize, sortMode }),
   });
 
   const createMutation = useMutation({

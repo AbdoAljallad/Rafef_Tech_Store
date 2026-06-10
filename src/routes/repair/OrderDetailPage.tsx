@@ -1,13 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { repairApi } from '../../modules/repair/api/repair.api';
 import { catalogApi } from '../../modules/catalog/api/catalog.api';
 import { Button } from '../../shared/ui/Button';
 import { SearchInput } from '../../shared/components/SearchInput/SearchInput';
 import { useForm } from 'react-hook-form';
 
+const statusOptions = ['new', 'inspection', 'waiting_customer_approval', 'waiting_part', 'in_repair', 'ready_for_delivery', 'delivered', 'cancelled'] as const;
+
 export function OrderDetailPage() {
+  const { t } = useTranslation(['app', 'statuses']);
   const { id } = useParams();
   const queryClient = useQueryClient();
   const [serviceName, setServiceName] = useState('');
@@ -28,61 +32,83 @@ export function OrderDetailPage() {
   if (!id) return null;
 
   const order = orderQuery.data?.order;
+  const currentStatusLabel = order?.status ? String(t(`statuses:repair.${order.status}`)) : '-';
 
   return (
     <>
-      <header className="page-header"><div><p className="eyebrow">Repair</p><h1>Repair Order {order?.order_code ?? id}</h1></div></header>
+      <header className="page-header">
+        <div>
+          <p className="eyebrow">{t('repair.module')}</p>
+          <h1>{t('repair.orderTitle', { code: order?.order_code ?? id })}</h1>
+        </div>
+      </header>
       <section className="stack">
-        <div><strong>Status:</strong> {order?.status}</div>
-        <div><strong>Customer:</strong> {order?.customer_name ?? order?.customer_id}</div>
-        <div><strong>Device:</strong> {order?.device_name ?? order?.device_id}</div>
-        <div><strong>Problem:</strong> {order?.problem_description}</div>
+        <div><strong>{t('repair.status')}:</strong> {currentStatusLabel}</div>
+        <div><strong>{t('repair.customer')}:</strong> {order?.customer_name ?? order?.customer_id}</div>
+        <div><strong>{t('repair.device')}:</strong> {order?.device_name ?? order?.device_id}</div>
+        <div><strong>{t('repair.problem')}:</strong> {order?.problem_description}</div>
 
         <hr />
-        <h3>Services</h3>
-        <ul>{(order?.services ?? []).map((s: any) => <li key={s.id}>{s.service_name_snapshot} × {s.quantity} ({s.unit_price_snapshot})</li>)}</ul>
-        <label>Service name<input value={serviceName} onChange={(e) => setServiceName(e.target.value)} /></label>
-        <Button onClick={() => { if (!serviceName) return alert('Service name required'); addServiceMutation.mutate({ serviceName, quantity: 1 }); setServiceName(''); }}>Add Service</Button>
+        <h3>{t('repair.services')}</h3>
+        <ul>{(order?.services ?? []).map((service: any) => <li key={service.id}>{service.service_name_snapshot} × {service.quantity} ({service.unit_price_snapshot})</li>)}</ul>
+        <label>
+          {t('repair.serviceName')}
+          <input value={serviceName} onChange={(e) => setServiceName(e.target.value)} />
+        </label>
+        <Button onClick={() => { if (!serviceName) return alert(t('repair.serviceNameRequired')); addServiceMutation.mutate({ serviceName, quantity: 1 }); setServiceName(''); }}>
+          {t('repair.addService')}
+        </Button>
 
         <hr />
-        <h3>Parts</h3>
-        <ul>{(order?.parts ?? []).map((p: any) => <li key={p.id}>{p.product_name_snapshot} × {p.quantity}</li>)}</ul>
-        <label>Product<SearchInput placeholder="Search products by SKU or name" value={productSearch} onChange={(e) => setProductSearch((e.target as HTMLInputElement).value)} /></label>
-        <label>Part product<select value={partProductId as any} onChange={(e) => setPartProductId(Number(e.target.value) || '')}>
-          <option value="">-- select product --</option>
-          {(productsQuery.data?.items ?? []).map((p: any) => <option key={p.id} value={p.id}>{p.sku} {p.default_name}</option>)}
-        </select></label>
-        <label>Qty<input type="number" min={1} value={partQty} onChange={(e) => setPartQty(Number(e.target.value))} /></label>
-        <Button onClick={() => { if (!partProductId) return alert('Select a product'); if (partQty < 1) return alert('Quantity must be at least 1'); addPartMutation.mutate({ productId: Number(partProductId), quantity: Number(partQty) }); }}>Add Part</Button>
-        {reservationResult && (
+        <h3>{t('repair.parts')}</h3>
+        <ul>{(order?.parts ?? []).map((part: any) => <li key={part.id}>{part.product_name_snapshot} × {part.quantity}</li>)}</ul>
+        <label>
+          {t('repair.product')}
+          <SearchInput placeholder={t('repair.searchProducts')} value={productSearch} onChange={(e) => setProductSearch((e.target as HTMLInputElement).value)} />
+        </label>
+        <label>
+          {t('repair.partProduct')}
+          <select value={partProductId as any} onChange={(e) => setPartProductId(Number(e.target.value) || '')}>
+            <option value="">{t('repair.selectProduct')}</option>
+            {(productsQuery.data?.items ?? []).map((product: any) => <option key={product.id} value={product.id}>{product.sku} {product.default_name}</option>)}
+          </select>
+        </label>
+        <label>
+          {t('repair.qty')}
+          <input type="number" min={1} value={partQty} onChange={(e) => setPartQty(Number(e.target.value))} />
+        </label>
+        <Button onClick={() => { if (!partProductId) return alert(t('repair.productRequired')); if (partQty < 1) return alert(t('repair.quantityMin')); addPartMutation.mutate({ productId: Number(partProductId), quantity: Number(partQty) }); }}>
+          {t('repair.addPart')}
+        </Button>
+        {reservationResult ? (
           <div className="notice">
-            Reservation created: id {reservationResult.part?.reservation_id ?? reservationResult.part?.reservationId ?? 'n/a'} — quantity {reservationResult.part?.quantity ?? 'n/a'}
+            {t('repair.reservationCreated', {
+              reservationId: reservationResult.part?.reservation_id ?? reservationResult.part?.reservationId ?? 'n/a',
+              quantity: reservationResult.part?.quantity ?? 'n/a',
+            })}
           </div>
-        )}
+        ) : null}
 
         <hr />
-        <h3>Status</h3>
+        <h3>{t('repair.status')}</h3>
         <select defaultValue="new" onChange={(e) => changeStatusMutation.mutate({ status: e.target.value })}>
-          <option value="new">new</option>
-          <option value="inspection">inspection</option>
-          <option value="waiting_customer_approval">waiting_customer_approval</option>
-          <option value="waiting_part">waiting_part</option>
-          <option value="in_repair">in_repair</option>
-          <option value="ready_for_delivery">ready_for_delivery</option>
-          <option value="delivered">delivered</option>
-          <option value="cancelled">cancelled</option>
+          {statusOptions.map((status) => (
+            <option key={status} value={status}>
+              {String(t(`statuses:repair.${status}`))}
+            </option>
+          ))}
         </select>
 
         <hr />
-        <h3>Notes</h3>
-        <ul>{(order?.notes ?? []).map((n: any) => <li key={n.id}>{n.note_text}</li>)}</ul>
-        <form onSubmit={form.handleSubmit((v) => addNoteMutation.mutate({ noteText: v.noteText }))} className="stack">
+        <h3>{t('repair.notes')}</h3>
+        <ul>{(order?.notes ?? []).map((note: any) => <li key={note.id}>{note.note_text}</li>)}</ul>
+        <form onSubmit={form.handleSubmit((values) => addNoteMutation.mutate({ noteText: values.noteText }))} className="stack">
           <textarea {...form.register('noteText', { required: true, minLength: 3 })} />
-          <div className="actions"><Button type="submit">Add Note</Button></div>
+          <div className="actions"><Button type="submit">{t('repair.addNote')}</Button></div>
         </form>
 
         <hr />
-        <Button onClick={() => { window.location.href = `/repair/orders/${id}/receipt`; }}>View Receipt</Button>
+        <Button onClick={() => { window.location.href = `/repair/orders/${id}/receipt`; }}>{t('repair.viewReceipt')}</Button>
       </section>
     </>
   );

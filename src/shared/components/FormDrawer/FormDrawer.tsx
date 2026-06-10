@@ -76,11 +76,11 @@ export function FormDrawer({ title, isOpen, onClose, children }: FormDrawerProps
           max-height: 85vh;
           overflow-y: auto;
           grid-template-rows: auto minmax(0, 1fr);
-          border: 1px solid rgba(125, 211, 252, 0.42);
+          border: 1px solid var(--theme-action-border);
           border-radius: 24px;
           background:
-            linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(234, 247, 255, 0.88)),
-            radial-gradient(circle at 100% 0%, rgba(66, 165, 255, 0.14), transparent 34%);
+            linear-gradient(145deg, var(--theme-panel-fill-start), var(--theme-panel-fill-end)),
+            radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--accent-soft) 14%, transparent), transparent 34%);
           box-shadow: var(--shadow-panel, 0 25px 50px -12px rgba(0, 0, 0, 0.25));
           transform: translate(-50%, -50%);
           animation: formDrawerScaleIn 0.2s ease;
@@ -95,8 +95,8 @@ export function FormDrawer({ title, isOpen, onClose, children }: FormDrawerProps
           justify-content: space-between;
           gap: 1rem;
           padding: 1.1rem 1.25rem;
-          border-bottom: 1px solid rgba(125, 211, 252, 0.24);
-          background: rgba(255, 255, 255, 0.88);
+          border-bottom: 1px solid var(--theme-action-border);
+          background: color-mix(in srgb, var(--color-surface) 88%, transparent);
           backdrop-filter: blur(10px);
         }
 

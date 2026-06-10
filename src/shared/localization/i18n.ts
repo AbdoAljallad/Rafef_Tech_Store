@@ -1,35 +1,70 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import auth from './ru/auth.json';
-import common from './ru/common.json';
-import errors from './ru/errors.json';
-import modules from './ru/modules.json';
-import navigation from './ru/navigation.json';
-import statuses from './ru/statuses.json';
-import validation from './ru/validation.json';
+import ruApp from './ru/app.json';
+import ruAuth from './ru/auth.json';
+import ruCommon from './ru/common.json';
+import ruErrors from './ru/errors.json';
+import ruModules from './ru/modules.json';
+import ruNavigation from './ru/navigation.json';
+import ruStatuses from './ru/statuses.json';
+import ruValidation from './ru/validation.json';
+import arApp from './ar/app.json';
+import arAuth from './ar/auth.json';
+import arCommon from './ar/common.json';
+import arErrors from './ar/errors.json';
+import arModules from './ar/modules.json';
+import arNavigation from './ar/navigation.json';
+import arStatuses from './ar/statuses.json';
+import arValidation from './ar/validation.json';
 
 export const DEFAULT_LANGUAGE = 'ru';
 
+function getStoredLanguage() {
+  if (typeof window === 'undefined') {
+    return DEFAULT_LANGUAGE;
+  }
+
+  try {
+    const raw = window.localStorage.getItem('rafef-system-preferences');
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed?.language === 'ar' ? 'ar' : DEFAULT_LANGUAGE;
+  } catch {
+    return DEFAULT_LANGUAGE;
+  }
+}
+
 i18n.use(initReactI18next).init({
-  lng: DEFAULT_LANGUAGE,
+  lng: getStoredLanguage(),
   fallbackLng: DEFAULT_LANGUAGE,
+  supportedLngs: ['ru', 'ar'],
   debug: import.meta.env.DEV,
   interpolation: {
     escapeValue: false,
   },
   resources: {
     ru: {
-      auth,
-      common,
-      errors,
-      modules,
-      navigation,
-      statuses,
-      validation,
+      app: ruApp,
+      auth: ruAuth,
+      common: ruCommon,
+      errors: ruErrors,
+      modules: ruModules,
+      navigation: ruNavigation,
+      statuses: ruStatuses,
+      validation: ruValidation,
+    },
+    ar: {
+      app: arApp,
+      auth: arAuth,
+      common: arCommon,
+      errors: arErrors,
+      modules: arModules,
+      navigation: arNavigation,
+      statuses: arStatuses,
+      validation: arValidation,
     },
   },
   defaultNS: 'common',
-  ns: ['auth', 'common', 'errors', 'modules', 'navigation', 'statuses', 'validation'],
+  ns: ['app', 'auth', 'common', 'errors', 'modules', 'navigation', 'statuses', 'validation'],
 });
 
 export default i18n;

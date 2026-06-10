@@ -6,8 +6,11 @@ import { parsePagination } from '../../shared/http/pagination.js';
 import { CrmService } from './crm.service.js';
 import { contactCreateSchema, customerCreateSchema, customerUpdateSchema, locationCreateSchema, noteCreateSchema } from './crm.schemas.js';
 
+type CustomerSortMode = 'name-asc' | 'name-desc' | 'code-asc' | 'code-desc' | 'created-desc' | 'created-asc';
+
 const router = Router();
 const crmService = new CrmService();
+const CUSTOMER_SORT_MODES = new Set<CustomerSortMode>(['name-asc', 'name-desc', 'code-asc', 'code-desc', 'created-desc', 'created-asc']);
 
 router.use(requireAuth);
 
@@ -16,10 +19,15 @@ router.get(
   requirePermission('crm.customers.view'),
   asyncHandler(async (request, response) => {
     const { page, pageSize, offset } = parsePagination(request.query);
+    const requestedSort: CustomerSortMode | undefined =
+      typeof request.query.sort === 'string' && CUSTOMER_SORT_MODES.has(request.query.sort as CustomerSortMode)
+        ? (request.query.sort as CustomerSortMode)
+        : undefined;
     const result = await crmService.listCustomers({
       search: typeof request.query.search === 'string' ? request.query.search : undefined,
       offset,
       limit: pageSize,
+      sort: requestedSort,
     });
     response.json({
       items: result.items,

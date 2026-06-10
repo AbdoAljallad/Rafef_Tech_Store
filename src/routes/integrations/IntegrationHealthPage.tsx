@@ -11,37 +11,37 @@ export function IntegrationHealthPage() {
     <>
       <header className="page-header">
         <div>
-          <p className="eyebrow">Integrations</p>
-          <h1>Integration Health</h1>
+          <p className="eyebrow">Интеграции</p>
+          <h1>Состояние интеграций</h1>
         </div>
       </header>
 
       <section className="detail-grid">
         <article className="panel">
-          <h2>Service Status</h2>
+          <h2>Состояние сервисов</h2>
           <DataTable
             rows={healthQuery.data?.health.services ?? []}
             isLoading={healthQuery.isLoading}
-            emptyText={healthQuery.isError ? 'Failed to load integration health' : 'No services'}
+            emptyText={healthQuery.isError ? 'Не удалось загрузить состояние интеграций' : 'Сервисы не найдены'}
             getRowKey={(row) => row.key ?? row.name}
             columns={[
-              { key: 'service', header: 'Service', render: (row) => row.key ?? row.name },
-              { key: 'status', header: 'Status', render: (row) => <Badge tone={row.status === 'ok' || row.status === 'configured' ? 'success' : 'warning'}>{row.status}</Badge> },
+              { key: 'service', header: 'Сервис', render: (row) => row.key ?? row.name },
+              { key: 'status', header: 'Статус', render: (row) => <Badge tone={row.status === 'ok' || row.status === 'configured' ? 'success' : 'warning'}>{row.status}</Badge> },
             ]}
           />
         </article>
 
         <article className="panel">
-          <h2>Webhook Outbox</h2>
+          <h2>Очередь webhook</h2>
           <DataTable
             rows={outboxQuery.data?.items ?? []}
             isLoading={outboxQuery.isLoading}
-            emptyText={outboxQuery.isError ? 'Failed to load webhook outbox' : 'No webhook jobs'}
+            emptyText={outboxQuery.isError ? 'Не удалось загрузить очередь webhook' : 'Задания webhook отсутствуют'}
             getRowKey={(row) => row.id}
             columns={[
-              { key: 'target', header: 'Target', render: (row) => row.target },
-              { key: 'event', header: 'Event', render: (row) => row.event_type },
-              { key: 'status', header: 'Status', render: (row) => row.status },
+              { key: 'target', header: 'Цель', render: (row) => row.target },
+              { key: 'event', header: 'Событие', render: (row) => row.event_type },
+              { key: 'status', header: 'Статус', render: (row) => row.status },
             ]}
           />
         </article>

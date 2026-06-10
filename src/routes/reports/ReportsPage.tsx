@@ -5,12 +5,12 @@ import { DataTable } from '../../shared/components/DataTable/DataTable';
 import { Button } from '../../shared/ui/Button';
 
 const reports: Array<{ key: ReportName; title: string; permission: string }> = [
-  { key: 'sales', title: 'Sales', permission: 'reports.sales.view' },
-  { key: 'inventory', title: 'Inventory', permission: 'reports.inventory.view' },
-  { key: 'finance', title: 'Finance', permission: 'reports.finance.view' },
-  { key: 'repair', title: 'Repair', permission: 'reports.repair.view' },
-  { key: 'projects', title: 'Projects', permission: 'reports.projects.view' },
-  { key: 'creative', title: 'Creative', permission: 'reports.creative.view' },
+  { key: 'sales', title: 'Продажи', permission: 'reports.sales.view' },
+  { key: 'inventory', title: 'Склад', permission: 'reports.inventory.view' },
+  { key: 'finance', title: 'Финансы', permission: 'reports.finance.view' },
+  { key: 'repair', title: 'Ремонт', permission: 'reports.repair.view' },
+  { key: 'projects', title: 'Проекты', permission: 'reports.projects.view' },
+  { key: 'creative', title: 'Креатив', permission: 'reports.creative.view' }
 ];
 
 function rows(report?: Record<string, string | number | null>) {
@@ -29,10 +29,10 @@ export function ReportsPage() {
     <>
       <header className="page-header">
         <div>
-          <p className="eyebrow">Reports</p>
-          <h1>Reports</h1>
+          <p className="eyebrow">Отчёты</p>
+          <h1>Отчёты</h1>
         </div>
-        <Button icon={<BarChart3 size={18} />} onClick={() => queries.forEach((query) => query.refetch())}>Refresh</Button>
+        <Button icon={<BarChart3 size={18} />} onClick={() => queries.forEach((query) => query.refetch())}>Обновить</Button>
       </header>
 
       <section className="widget-grid">
@@ -44,11 +44,11 @@ export function ReportsPage() {
               <DataTable
                 rows={rows(query.data?.report)}
                 isLoading={query.isLoading}
-                emptyText={query.isError ? `Failed to load ${report.title}` : 'No report data'}
+                emptyText={query.isError ? `Не удалось загрузить отчёт: ${report.title}` : 'Данные отчёта отсутствуют'}
                 getRowKey={(row) => row.metric}
                 columns={[
-                  { key: 'metric', header: 'Metric', render: (row) => row.metric },
-                  { key: 'value', header: 'Value', render: (row) => String(row.value) },
+                  { key: 'metric', header: 'Показатель', render: (row) => row.metric },
+                  { key: 'value', header: 'Значение', render: (row) => String(row.value) },
                 ]}
               />
             </article>

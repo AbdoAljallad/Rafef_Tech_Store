@@ -16,8 +16,8 @@ export function MainLayout() {
       <SkipLink />
       <DevModeBadge />
       <div className={isHomePage ? 'app-body home' : 'app-body'}>
-        <aside className="left-panel" aria-label="Панель пользователя">
-          {!isHomePage ? (
+        {!isHomePage ? (
+          <aside className="left-panel" aria-label="Панель пользователя">
             <Link to="/home" className="sidebar-brand" aria-label="На главный экран Rafef Tech">
               <span className="sidebar-brand-mark">
                 <img src={logos.rafefTech} alt="" />
@@ -27,10 +27,10 @@ export function MainLayout() {
                 <small>Система управления</small>
               </span>
             </Link>
-          ) : null}
-          <UserCard isHomePage={isHomePage} />
-          {!isHomePage ? <ModuleNav /> : null}
-        </aside>
+            <UserCard />
+            <ModuleNav />
+          </aside>
+        ) : null}
         <main className={isHomePage ? 'app-content home-content' : 'app-content'} id="main-content" tabIndex={-1}>
           <div className="content-utility-row">
             <SystemControls />

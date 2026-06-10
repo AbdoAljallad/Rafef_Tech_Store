@@ -1,10 +1,12 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { RadialMenu } from '../../modules/home/components/RadialMenu';
 import { crmApi } from '../../modules/crm/api/crm.api';
 import { reportsApi } from '../../modules/reports/api/reports.api';
 import { salesApi } from '../../modules/sales/api/sales.api';
+import { UserCard } from '../../shared/components/Sidebar/UserCard';
 
 type WidgetTone = 'sales' | 'repair' | 'stock' | 'clients';
 type WidgetState = 'loading' | 'error';
@@ -19,16 +21,6 @@ type HomeWidget = {
 };
 
 type ReportPayload = Record<string, string | number | null | undefined>;
-
-const CURRENCY_FORMATTER = new Intl.NumberFormat('ru-RU', {
-  currency: 'EGP',
-  maximumFractionDigits: 0,
-  style: 'currency',
-});
-
-const NUMBER_FORMATTER = new Intl.NumberFormat('ru-RU', {
-  maximumFractionDigits: 0,
-});
 
 function toNumber(value: unknown) {
   const parsed = Number(value ?? 0);
@@ -50,10 +42,6 @@ function isToday(value: unknown) {
   );
 }
 
-function formatCount(value: number) {
-  return NUMBER_FORMATTER.format(Math.max(0, Math.round(value)));
-}
-
 function getReportNumber(report: ReportPayload | undefined, key: string) {
   return toNumber(report?.[key]);
 }
@@ -66,23 +54,46 @@ function getWidgetState(isLoading: boolean, isError: boolean): WidgetState | und
   return isError ? 'error' : undefined;
 }
 
-function getValueState(isLoading: boolean, isError: boolean, value: string) {
-  if (isLoading) {
-    return 'Загрузка';
-  }
-
-  return isError ? '—' : value;
-}
-
-function getTrendState(isLoading: boolean, isError: boolean, value: string) {
-  if (isLoading) {
-    return 'Получаем данные';
-  }
-
-  return isError ? 'Нет данных' : value;
-}
-
 export function HomePage() {
+  const { t, i18n } = useTranslation('app');
+  const locale = i18n.resolvedLanguage === 'ar' ? 'ar-EG' : 'ru-RU';
+  const currencyFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat(locale, {
+        currency: 'EGP',
+        maximumFractionDigits: 0,
+        style: 'currency',
+      }),
+    [locale],
+  );
+  const numberFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat(locale, {
+        maximumFractionDigits: 0,
+      }),
+    [locale],
+  );
+
+  function formatCount(value: number) {
+    return numberFormatter.format(Math.max(0, Math.round(value)));
+  }
+
+  function getValueState(isLoading: boolean, isError: boolean, value: string) {
+    if (isLoading) {
+      return t('home.loading');
+    }
+
+    return isError ? '—' : value;
+  }
+
+  function getTrendState(isLoading: boolean, isError: boolean, value: string) {
+    if (isLoading) {
+      return t('home.receivingData');
+    }
+
+    return isError ? t('home.noData') : value;
+  }
+
   const salesQuery = useQuery({
     queryKey: ['home', 'sales-today'],
     queryFn: () => salesApi.listInvoices({ offset: 0, limit: 100 }),
@@ -120,43 +131,60 @@ export function HomePage() {
     const onHand = getReportNumber(inventoryReport, 'on_hand');
 
     const customers = customersQuery.data?.items ?? [];
+    const customersTotal = toNumber(customersQuery.data?.meta?.total);
     const newCustomers = customers.filter((customer) => isToday(customer.created_at)).length;
 
     return [
       {
-        label: 'Сегодняшние продажи',
-        value: getValueState(salesQuery.isLoading, salesQuery.isError, CURRENCY_FORMATTER.format(todaySalesTotal)),
-        trend: getTrendState(salesQuery.isLoading, salesQuery.isError, `${formatCount(todayInvoices.length)} чеков`),
+        label: t('home.widgets.sales'),
+        value: getValueState(salesQuery.isLoading, salesQuery.isError, currencyFormatter.format(todaySalesTotal)),
+        trend: getTrendState(salesQuery.isLoading, salesQuery.isError, t('home.trend.checks', { count: formatCount(todayInvoices.length) })),
         tone: 'sales',
         path: '/sales/pos',
         state: getWidgetState(salesQuery.isLoading, salesQuery.isError),
       },
       {
-        label: 'Заказы на ремонт',
+        label: t('home.widgets.repair'),
         value: getValueState(repairQuery.isLoading, repairQuery.isError, formatCount(activeRepairOrders)),
-        trend: getTrendState(repairQuery.isLoading, repairQuery.isError, `${formatCount(repairInWork)} в работе`),
+        trend: getTrendState(repairQuery.isLoading, repairQuery.isError, t('home.trend.inWork', { count: formatCount(repairInWork) })),
         tone: 'repair',
         path: '/repair/orders',
         state: getWidgetState(repairQuery.isLoading, repairQuery.isError),
       },
       {
-        label: 'Товары на складе',
+        label: t('home.widgets.stock'),
         value: getValueState(inventoryQuery.isLoading, inventoryQuery.isError, formatCount(products)),
-        trend: getTrendState(inventoryQuery.isLoading, inventoryQuery.isError, `${formatCount(onHand)} ед. на складе`),
+        trend: getTrendState(inventoryQuery.isLoading, inventoryQuery.isError, t('home.trend.onHand', { count: formatCount(onHand) })),
         tone: 'stock',
         path: '/inventory/stock',
         state: getWidgetState(inventoryQuery.isLoading, inventoryQuery.isError),
       },
       {
-        label: 'Новые клиенты',
+        label: t('home.widgets.customers'),
         value: getValueState(customersQuery.isLoading, customersQuery.isError, formatCount(newCustomers)),
-        trend: getTrendState(customersQuery.isLoading, customersQuery.isError, `${formatCount(customers.length)} в списке`),
+        trend: getTrendState(customersQuery.isLoading, customersQuery.isError, t('home.trend.inList', { count: formatCount(customersTotal) })),
         tone: 'clients',
         path: '/customers',
         state: getWidgetState(customersQuery.isLoading, customersQuery.isError),
       },
     ];
-  }, [customersQuery.data, customersQuery.isError, customersQuery.isLoading, inventoryQuery.data, inventoryQuery.isError, inventoryQuery.isLoading, repairQuery.data, repairQuery.isError, repairQuery.isLoading, salesQuery.data, salesQuery.isError, salesQuery.isLoading]);
+  }, [
+    currencyFormatter,
+    customersQuery.data,
+    customersQuery.isError,
+    customersQuery.isLoading,
+    inventoryQuery.data,
+    inventoryQuery.isError,
+    inventoryQuery.isLoading,
+    numberFormatter,
+    repairQuery.data,
+    repairQuery.isError,
+    repairQuery.isLoading,
+    salesQuery.data,
+    salesQuery.isError,
+    salesQuery.isLoading,
+    t,
+  ]);
 
   return (
     <div className="home-workspace">
@@ -167,12 +195,15 @@ export function HomePage() {
         <span />
         <span />
       </div>
+      <div className="home-profile-panel">
+        <UserCard isHomePage />
+      </div>
       <RadialMenu />
-      <aside className="home-widget-stack" aria-label="Ключевые показатели">
+      <aside className="home-widget-stack" aria-label={t('home.keyIndicators')}>
         {widgets.map((widget) => (
           <Link className={`home-widget-zone ${widget.tone} ${widget.state ?? ''}`} key={widget.label} to={widget.path}>
             <div className="home-widget-heading">
-              <span className="home-widget-kicker">Показатель</span>
+              <span className="home-widget-kicker">{t('home.metric')}</span>
               <span className="home-widget-trend">{widget.trend}</span>
             </div>
             <div>

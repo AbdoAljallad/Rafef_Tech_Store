@@ -51,44 +51,44 @@ export function ProjectsPage() {
     <>
       <header className="page-header">
         <div>
-          <p className="eyebrow">Projects</p>
-          <h1>CCTV & Network Projects</h1>
+          <p className="eyebrow">Проекты</p>
+          <h1>Проекты CCTV и сетей</h1>
         </div>
         <div className="page-actions">
-          <Button variant="secondary" icon={<ListTree size={18} />} onClick={() => navigate('/projects/types')}>Types</Button>
-          <Button icon={<Plus size={18} />} onClick={() => setIsCreateOpen(true)}>New Project</Button>
+          <Button variant="secondary" icon={<ListTree size={18} />} onClick={() => navigate('/projects/types')}>Типы</Button>
+          <Button icon={<Plus size={18} />} onClick={() => setIsCreateOpen(true)}>Новый проект</Button>
         </div>
       </header>
 
       <DataTable
         rows={projectsQuery.data?.items ?? []}
         isLoading={projectsQuery.isLoading}
-        emptyText={projectsQuery.isError ? 'Failed to load projects' : 'No projects'}
+        emptyText={projectsQuery.isError ? 'Не удалось загрузить проекты' : 'Проекты отсутствуют'}
         getRowKey={(project) => project.id}
         onRowClick={(project) => navigate(`/projects/${project.id}`)}
         columns={[
-          { key: 'code', header: 'Code', render: (project) => project.project_code },
-          { key: 'title', header: 'Title', render: (project) => project.title },
-          { key: 'type', header: 'Type', render: (project) => project.project_type_name ?? project.project_type_id ?? '-' },
-          { key: 'customer', header: 'Customer', render: (project) => project.customer_name ?? project.customer_id ?? '-' },
-          { key: 'status', header: 'Status', render: (project) => project.status },
+          { key: 'code', header: 'Код', render: (project) => project.project_code },
+          { key: 'title', header: 'Название', render: (project) => project.title },
+          { key: 'type', header: 'Тип', render: (project) => project.project_type_name ?? project.project_type_id ?? '-' },
+          { key: 'customer', header: 'Клиент', render: (project) => project.customer_name ?? project.customer_id ?? '-' },
+          { key: 'status', header: 'Статус', render: (project) => project.status },
         ]}
       />
 
-      <FormDrawer title="New Project" isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)}>
+      <FormDrawer title="Новый проект" isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)}>
         <form className="entity-form" onSubmit={createProject}>
-          <Select label="Project type" value={projectTypeId} onChange={(event) => setProjectTypeId(event.target.value)}>
-            <option value="">No type</option>
+          <Select label="Тип проекта" value={projectTypeId} onChange={(event) => setProjectTypeId(event.target.value)}>
+            <option value="">Без типа</option>
             {(typesQuery.data?.items ?? []).map((type) => <option key={type.id} value={type.id}>{type.default_name}</option>)}
           </Select>
-          <Input label="Customer search" value={customerSearch} onChange={(event) => setCustomerSearch(event.target.value)} />
-          <Select label="Customer" value={customerId} onChange={(event) => setCustomerId(event.target.value)}>
-            <option value="">No customer</option>
+          <Input label="Поиск клиента" value={customerSearch} onChange={(event) => setCustomerSearch(event.target.value)} />
+          <Select label="Клиент" value={customerId} onChange={(event) => setCustomerId(event.target.value)}>
+            <option value="">Без клиента</option>
             {(customersQuery.data?.items ?? []).map((customer) => <option key={customer.id} value={customer.id}>{customer.customer_code} - {customer.name}</option>)}
           </Select>
-          <Input label="Title" value={title} onChange={(event) => setTitle(event.target.value)} required />
-          <Textarea label="Description" value={description} onChange={(event) => setDescription(event.target.value)} />
-          <Button type="submit" isLoading={createMutation.isPending}>Create Project</Button>
+          <Input label="Название" value={title} onChange={(event) => setTitle(event.target.value)} required />
+          <Textarea label="Описание" value={description} onChange={(event) => setDescription(event.target.value)} />
+          <Button type="submit" isLoading={createMutation.isPending}>Создать проект</Button>
         </form>
       </FormDrawer>
     </>

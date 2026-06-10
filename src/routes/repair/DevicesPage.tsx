@@ -21,47 +21,47 @@ export function DevicesPage() {
 
   return (
     <>
-      <header className="page-header"><div><p className="eyebrow">Repair</p><h1>Devices & Dictionaries</h1></div></header>
+      <header className="page-header"><div><p className="eyebrow">Ремонт</p><h1>Устройства и справочники</h1></div></header>
       <section className="grid">
         <div>
-          <h3>Categories</h3>
-          <ul>{(categories.data?.items ?? []).map((c: any) => <li key={c.id}>{c.name_ru}</li>)}</ul>
-          <form onSubmit={catForm.handleSubmit((v) => createCategory.mutate(v))}>
-            <input placeholder="code" {...catForm.register('code')} />
-            <input placeholder="nameRu" {...catForm.register('nameRu')} />
-            <Button type="submit">Create Category</Button>
+          <h3>Категории</h3>
+          <ul>{(categories.data?.items ?? []).map((category: any) => <li key={category.id}>{category.name_ru}</li>)}</ul>
+          <form onSubmit={catForm.handleSubmit((values) => createCategory.mutate(values))}>
+            <input placeholder="код" {...catForm.register('code')} />
+            <input placeholder="название" {...catForm.register('nameRu')} />
+            <Button type="submit">Создать категорию</Button>
           </form>
         </div>
 
         <div>
-          <h3>Brands</h3>
-          <ul>{(brands.data?.items ?? []).map((b: any) => <li key={b.id}>{b.name}</li>)}</ul>
-          <form onSubmit={brandForm.handleSubmit((v) => createBrand.mutate(v))}>
-            <input placeholder="name" {...brandForm.register('name')} />
-            <Button type="submit">Create Brand</Button>
+          <h3>Бренды</h3>
+          <ul>{(brands.data?.items ?? []).map((brand: any) => <li key={brand.id}>{brand.name}</li>)}</ul>
+          <form onSubmit={brandForm.handleSubmit((values) => createBrand.mutate(values))}>
+            <input placeholder="название" {...brandForm.register('name')} />
+            <Button type="submit">Создать бренд</Button>
           </form>
         </div>
 
         <div>
-          <h3>Models</h3>
-          <ul>{(models.data?.items ?? []).map((m: any) => <li key={m.id}>{m.name}</li>)}</ul>
-          <form onSubmit={modelForm.handleSubmit((v) => createModel.mutate({ categoryId: Number(v.categoryId), brandId: Number(v.brandId), name: v.name }))}>
-            <input placeholder="categoryId" {...modelForm.register('categoryId')} />
-            <input placeholder="brandId" {...modelForm.register('brandId')} />
-            <input placeholder="name" {...modelForm.register('name')} />
-            <Button type="submit">Create Model</Button>
+          <h3>Модели</h3>
+          <ul>{(models.data?.items ?? []).map((model: any) => <li key={model.id}>{model.name}</li>)}</ul>
+          <form onSubmit={modelForm.handleSubmit((values) => createModel.mutate({ categoryId: Number(values.categoryId), brandId: Number(values.brandId), name: values.name }))}>
+            <input placeholder="id категории" {...modelForm.register('categoryId')} />
+            <input placeholder="id бренда" {...modelForm.register('brandId')} />
+            <input placeholder="название" {...modelForm.register('name')} />
+            <Button type="submit">Создать модель</Button>
           </form>
         </div>
 
         <div>
-          <h3>Create Device</h3>
-          <form onSubmit={deviceForm.handleSubmit((v) => createDevice.mutate({ customerId: Number(v.customerId), categoryId: Number(v.categoryId), brandId: v.brandId ? Number(v.brandId) : null, modelId: v.modelId ? Number(v.modelId) : null, deviceName: v.deviceName }))}>
-            <input placeholder="customerId" {...deviceForm.register('customerId')} />
-            <input placeholder="categoryId" {...deviceForm.register('categoryId')} />
-            <input placeholder="brandId" {...deviceForm.register('brandId')} />
-            <input placeholder="modelId" {...deviceForm.register('modelId')} />
-            <input placeholder="deviceName" {...deviceForm.register('deviceName')} />
-            <Button type="submit">Create Device</Button>
+          <h3>Создание устройства</h3>
+          <form onSubmit={deviceForm.handleSubmit((values) => createDevice.mutate({ customerId: Number(values.customerId), categoryId: Number(values.categoryId), brandId: values.brandId ? Number(values.brandId) : null, modelId: values.modelId ? Number(values.modelId) : null, deviceName: values.deviceName }))}>
+            <input placeholder="id клиента" {...deviceForm.register('customerId')} />
+            <input placeholder="id категории" {...deviceForm.register('categoryId')} />
+            <input placeholder="id бренда" {...deviceForm.register('brandId')} />
+            <input placeholder="id модели" {...deviceForm.register('modelId')} />
+            <input placeholder="название устройства" {...deviceForm.register('deviceName')} />
+            <Button type="submit">Создать устройство</Button>
           </form>
         </div>
       </section>

@@ -1,4 +1,5 @@
 export type CustomerContactType = 'phone' | 'email' | 'whatsapp' | 'telegram' | 'other';
+export type CustomerSortMode = 'name-asc' | 'name-desc' | 'code-asc' | 'code-desc' | 'created-desc' | 'created-asc';
 
 export type CustomerContact = {
   id: number;

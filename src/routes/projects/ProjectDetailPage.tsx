@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { catalogApi } from '../../modules/catalog/api/catalog.api';
 import { projectsApi } from '../../modules/projects/api/projects.api';
 import { DataTable } from '../../shared/components/DataTable/DataTable';
@@ -10,9 +11,18 @@ import { Input } from '../../shared/ui/Input';
 import { Select } from '../../shared/ui/Select';
 import { Textarea } from '../../shared/ui/Textarea';
 
-const statuses = ['draft', 'planned', 'in_progress', 'on_hold', 'completed', 'cancelled'];
+const statuses = ['draft', 'planned', 'in_progress', 'on_hold', 'completed', 'cancelled'] as const;
+
+function formatProjectStatus(status: string | null | undefined, t: (key: string, options?: any) => string) {
+  if (!status) {
+    return '-';
+  }
+
+  return String(t(`projects.statusOptions.${status}`));
+}
 
 export function ProjectDetailPage() {
+  const { t } = useTranslation('app');
   const { id } = useParams();
   const projectId = Number(id);
   const queryClient = useQueryClient();
@@ -74,126 +84,131 @@ export function ProjectDetailPage() {
     <>
       <header className="page-header">
         <div>
-          <p className="eyebrow">Projects</p>
-          <h1>{project?.project_code ?? `Project ${id}`}</h1>
+          <p className="eyebrow">{t('projects.module')}</p>
+          <h1>{project?.project_code ?? t('projects.detailFallback', { id })}</h1>
         </div>
         <div className="page-actions">
-          <Link to="/projects">Back to projects</Link>
-          <Button icon={<FileText size={18} />} onClick={() => { window.location.href = `/projects/${id}/summary`; }}>Summary</Button>
+          <Link to="/projects">{t('projects.backToProjects')}</Link>
+          <Button icon={<FileText size={18} />} onClick={() => { window.location.href = `/projects/${id}/summary`; }}>
+            {t('projects.summary')}
+          </Button>
         </div>
       </header>
 
       <section className="panel entity-summary">
-        <h2>{project?.title ?? 'Loading project...'}</h2>
-        <p><strong>Status:</strong> {project?.status ?? '-'}</p>
-        <p><strong>Description:</strong> {project?.description ?? '-'}</p>
+        <h2>{project?.title ?? t('projects.loadingProject')}</h2>
+        <p><strong>{t('projects.status')}:</strong> {formatProjectStatus(project?.status, t)}</p>
+        <p><strong>{t('projects.description')}:</strong> {project?.description ?? '-'}</p>
       </section>
 
       <section className="detail-grid">
         <article className="panel entity-form">
-          <h2>Sites / Locations</h2>
+          <h2>{t('projects.siteLocations')}</h2>
           <DataTable
             rows={project?.sites ?? []}
             getRowKey={(site) => site.id}
-            emptyText="No sites"
+            emptyText={t('projects.noSites')}
             columns={[
-              { key: 'name', header: 'Site', render: (site) => site.site_name },
-              { key: 'address', header: 'Address', render: (site) => site.address_text ?? '-' },
-              { key: 'contact', header: 'Contact', render: (site) => site.contact_name ?? '-' },
+              { key: 'name', header: t('projects.site'), render: (site) => site.site_name },
+              { key: 'address', header: t('projects.address'), render: (site) => site.address_text ?? '-' },
+              { key: 'contact', header: t('projects.contact'), render: (site) => site.contact_name ?? '-' },
             ]}
           />
           <form className="entity-form" onSubmit={(event) => { event.preventDefault(); if (siteName.trim()) siteMutation.mutate({ siteName, addressText: siteAddress || null }); }}>
-            <Input label="Site name" value={siteName} onChange={(event) => setSiteName(event.target.value)} required />
-            <Textarea label="Address / location" value={siteAddress} onChange={(event) => setSiteAddress(event.target.value)} />
-            <Button type="submit" isLoading={siteMutation.isPending}>Add Site</Button>
+            <Input label={t('projects.siteName')} value={siteName} onChange={(event) => setSiteName(event.target.value)} required />
+            <Textarea label={t('projects.addressLocation')} value={siteAddress} onChange={(event) => setSiteAddress(event.target.value)} />
+            <Button type="submit" isLoading={siteMutation.isPending}>{t('projects.addSite')}</Button>
           </form>
         </article>
 
         <aside className="panel entity-form">
-          <h2>Status</h2>
+          <h2>{t('projects.status')}</h2>
           <form className="entity-form" onSubmit={(event) => { event.preventDefault(); statusMutation.mutate({ status, stageCode: stageCode || null, notes: statusNotes || null }); }}>
-            <Select label="Status" value={status} onChange={(event) => setStatus(event.target.value)}>
-              {statuses.map((item) => <option key={item} value={item}>{item}</option>)}
+            <Select label={t('projects.status')} value={status} onChange={(event) => setStatus(event.target.value)}>
+              {statuses.map((item) => <option key={item} value={item}>{t(`projects.statusOptions.${item}`)}</option>)}
             </Select>
-            <Input label="Stage code" value={stageCode} onChange={(event) => setStageCode(event.target.value)} />
-            <Textarea label="Status notes" value={statusNotes} onChange={(event) => setStatusNotes(event.target.value)} />
-            <Button type="submit" isLoading={statusMutation.isPending}>Change Status</Button>
+            <Input label={t('projects.stageCode')} value={stageCode} onChange={(event) => setStageCode(event.target.value)} />
+            <Textarea label={t('projects.statusNotes')} value={statusNotes} onChange={(event) => setStatusNotes(event.target.value)} />
+            <Button type="submit" isLoading={statusMutation.isPending}>{t('projects.changeStatus')}</Button>
           </form>
         </aside>
       </section>
 
       <section className="detail-grid">
         <article className="panel entity-form">
-          <h2>Materials</h2>
+          <h2>{t('projects.materials')}</h2>
           <DataTable
             rows={project?.materials ?? []}
             getRowKey={(material) => material.id}
-            emptyText="No reserved materials"
+            emptyText={t('projects.noReservedMaterials')}
             columns={[
-              { key: 'product', header: 'Product', render: (material) => material.product_name_snapshot },
-              { key: 'qty', header: 'Qty', render: (material) => material.quantity },
-              { key: 'reservation', header: 'Reservation', render: (material) => material.reservation_id },
+              { key: 'product', header: t('projects.product'), render: (material) => material.product_name_snapshot },
+              { key: 'qty', header: t('projects.qty'), render: (material) => material.quantity },
+              { key: 'reservation', header: t('projects.reservation'), render: (material) => material.reservation_id },
             ]}
           />
           {reservationResult ? (
             <div className="table-state">
-              Reservation created: id {reservationResult.reservationId ?? reservationResult.reservation_id ?? 'n/a'}; material id {reservationResult.id ?? 'n/a'}
+              {t('projects.reservationCreated', {
+                reservationId: reservationResult.reservationId ?? reservationResult.reservation_id ?? 'n/a',
+                materialId: reservationResult.id ?? 'n/a',
+              })}
             </div>
           ) : null}
           <form className="entity-form" onSubmit={(event) => { event.preventDefault(); if (materialProductId) materialMutation.mutate({ productId: Number(materialProductId), quantity: materialQty, notes: materialNotes || null }); }}>
-            <Input label="Product search" value={productSearch} onChange={(event) => setProductSearch(event.target.value)} />
-            <Select label="Material product" value={materialProductId} onChange={(event) => setMaterialProductId(event.target.value)} required>
-              <option value="">Select product</option>
+            <Input label={t('projects.productSearch')} value={productSearch} onChange={(event) => setProductSearch(event.target.value)} />
+            <Select label={t('projects.materialProduct')} value={materialProductId} onChange={(event) => setMaterialProductId(event.target.value)} required>
+              <option value="">{t('repair.selectProduct')}</option>
               {(productsQuery.data?.items ?? []).map((product) => <option key={product.id} value={product.id}>{product.sku} - {product.default_name}</option>)}
             </Select>
-            <Input label="Quantity" type="number" min={0.0001} step={0.0001} value={materialQty} onChange={(event) => setMaterialQty(Number(event.target.value))} />
-            <Textarea label="Reservation notes" value={materialNotes} onChange={(event) => setMaterialNotes(event.target.value)} />
-            <Button type="submit" isLoading={materialMutation.isPending}>Reserve Material</Button>
+            <Input label={t('projects.qty')} type="number" min={0.0001} step={0.0001} value={materialQty} onChange={(event) => setMaterialQty(Number(event.target.value))} />
+            <Textarea label={t('projects.reservationNotes')} value={materialNotes} onChange={(event) => setMaterialNotes(event.target.value)} />
+            <Button type="submit" isLoading={materialMutation.isPending}>{t('projects.reserveMaterial')}</Button>
           </form>
         </article>
 
         <aside className="panel entity-form">
-          <h2>Installed Assets</h2>
+          <h2>{t('projects.installedAssets')}</h2>
           <DataTable
             rows={project?.installedAssets ?? []}
             getRowKey={(asset) => asset.id}
-            emptyText="No installed assets"
+            emptyText={t('projects.noInstalledAssets')}
             columns={[
-              { key: 'type', header: 'Type', render: (asset) => asset.asset_type },
-              { key: 'name', header: 'Name', render: (asset) => asset.asset_name },
-              { key: 'ip', header: 'IP', render: (asset) => asset.ip_address ?? '-' },
+              { key: 'type', header: t('projects.assetType'), render: (asset) => asset.asset_type },
+              { key: 'name', header: t('projects.name'), render: (asset) => asset.asset_name },
+              { key: 'ip', header: t('projects.ip'), render: (asset) => asset.ip_address ?? '-' },
             ]}
           />
           <form className="entity-form" onSubmit={(event) => { event.preventDefault(); if (assetName.trim()) assetMutation.mutate({ siteId: assetSiteId ? Number(assetSiteId) : null, productId: assetProductId ? Number(assetProductId) : null, assetType, assetName, serialNo: serialNo || null, ipAddress: ipAddress || null }); }}>
-            <Select label="Site" value={assetSiteId} onChange={(event) => setAssetSiteId(event.target.value)}>
-              <option value="">No site</option>
+            <Select label={t('projects.site')} value={assetSiteId} onChange={(event) => setAssetSiteId(event.target.value)}>
+              <option value="">{t('projects.siteOptionNone')}</option>
               {(project?.sites ?? []).map((site) => <option key={site.id} value={site.id}>{site.site_name}</option>)}
             </Select>
-            <Select label="Product" value={assetProductId} onChange={(event) => setAssetProductId(event.target.value)}>
-              <option value="">No product</option>
+            <Select label={t('projects.product')} value={assetProductId} onChange={(event) => setAssetProductId(event.target.value)}>
+              <option value="">{t('projects.productOptionNone')}</option>
               {(productsQuery.data?.items ?? []).map((product) => <option key={product.id} value={product.id}>{product.sku} - {product.default_name}</option>)}
             </Select>
-            <Input label="Asset type" value={assetType} onChange={(event) => setAssetType(event.target.value)} required />
-            <Input label="Asset name" value={assetName} onChange={(event) => setAssetName(event.target.value)} required />
-            <Input label="Serial no" value={serialNo} onChange={(event) => setSerialNo(event.target.value)} />
-            <Input label="IP address" value={ipAddress} onChange={(event) => setIpAddress(event.target.value)} />
-            <Button type="submit" isLoading={assetMutation.isPending}>Add Asset</Button>
+            <Input label={t('projects.assetType')} value={assetType} onChange={(event) => setAssetType(event.target.value)} required />
+            <Input label={t('projects.assetName')} value={assetName} onChange={(event) => setAssetName(event.target.value)} required />
+            <Input label={t('projects.serialNo')} value={serialNo} onChange={(event) => setSerialNo(event.target.value)} />
+            <Input label={t('projects.ipAddress')} value={ipAddress} onChange={(event) => setIpAddress(event.target.value)} />
+            <Button type="submit" isLoading={assetMutation.isPending}>{t('projects.addAsset')}</Button>
           </form>
         </aside>
       </section>
 
       <section className="detail-grid">
         <article className="panel entity-form">
-          <h2>Notes</h2>
+          <h2>{t('projects.notes')}</h2>
           <ul>{(project?.notes ?? []).map((note) => <li key={note.id}>{note.note_text}</li>)}</ul>
           <form className="entity-form" onSubmit={(event) => { event.preventDefault(); if (noteText.trim()) noteMutation.mutate({ noteText }); }}>
-            <Textarea label="Project note" value={noteText} onChange={(event) => setNoteText(event.target.value)} />
-            <Button type="submit" isLoading={noteMutation.isPending}>Add Note</Button>
+            <Textarea label={t('projects.projectNote')} value={noteText} onChange={(event) => setNoteText(event.target.value)} />
+            <Button type="submit" isLoading={noteMutation.isPending}>{t('projects.addNote')}</Button>
           </form>
         </article>
         <aside className="panel entity-form">
-          <h2>Status History</h2>
-          <ul>{(project?.history ?? []).map((item) => <li key={item.id}>{item.from_status ?? '-'} - {item.to_status} ({item.stage_code ?? 'stage n/a'})</li>)}</ul>
+          <h2>{t('projects.statusHistory')}</h2>
+          <ul>{(project?.history ?? []).map((item) => <li key={item.id}>{item.from_status ?? '-'} - {item.to_status} ({item.stage_code ?? '-'})</li>)}</ul>
         </aside>
       </section>
     </>

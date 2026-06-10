@@ -91,8 +91,7 @@ export class CrmRepository {
         const [rows] = await pool.execute(`SELECT c.*
        FROM crm_customers c
        ${where}
-       ORDER BY c.created_at DESC
-       LIMIT ${params.limit} OFFSET ${params.offset}`, values);
+       ORDER BY c.id DESC`, values);
         return rows;
     }
     async countCustomers(params) {

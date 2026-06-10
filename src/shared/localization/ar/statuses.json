@@ -1,0 +1,32 @@
+{
+  "invoice": {
+    "draft": "مسودة",
+    "approved": "معتمد",
+    "partially_paid": "مدفوع جزئياً",
+    "paid": "مدفوع",
+    "partially_returned": "مرتجع جزئي",
+    "returned": "مرتجع",
+    "voided": "ملغى",
+    "replaced": "مستبدل"
+  },
+  "repair": {
+    "new": "جديد",
+    "inspection": "فحص",
+    "waiting_customer_approval": "بانتظار موافقة العميل",
+    "waiting_part": "بانتظار القطعة",
+    "in_repair": "قيد الصيانة",
+    "ready_for_delivery": "جاهز للتسليم",
+    "delivered": "تم التسليم",
+    "cancelled": "ملغي"
+  },
+  "inventoryReservation": {
+    "active": "نشط",
+    "consumed": "مستهلك",
+    "released": "تم الإفراج",
+    "cancelled": "ملغي"
+  },
+  "inventoryPurchase": {
+    "draft": "مسودة",
+    "received": "تم الاستلام"
+  }
+}
