@@ -7,8 +7,17 @@ const textCollators = {
     ru: new Intl.Collator('ru', { sensitivity: 'base', numeric: true, ignorePunctuation: true }),
     generic: new Intl.Collator(undefined, { sensitivity: 'base', numeric: true, ignorePunctuation: true }),
 };
+function normalizeSortValue(value) {
+    return value
+        .normalize('NFKC')
+        .replace(/\p{Cf}/gu, '')
+        .replace(/^[^\p{Letter}\p{Number}]+/gu, '')
+        .replace(/[آأإٱ]/g, 'ا')
+        .replace(/ى/g, 'ي')
+        .trim();
+}
 function getScriptPriority(value) {
-    const normalized = value.trim();
+    const normalized = normalizeSortValue(value);
     for (const char of normalized) {
         if (/\p{Script=Arabic}/u.test(char)) {
             return 0;
@@ -29,8 +38,8 @@ function getScriptPriority(value) {
     return 5;
 }
 function compareTextByLanguagePriority(leftValue, rightValue, direction = 'asc') {
-    const left = leftValue.trim();
-    const right = rightValue.trim();
+    const left = normalizeSortValue(leftValue);
+    const right = normalizeSortValue(rightValue);
     const leftPriority = getScriptPriority(left);
     const rightPriority = getScriptPriority(right);
     let result = 0;

@@ -635,6 +635,104 @@ textarea {
   transform: translateY(0);
 }
 
+:root[data-theme='night'] .auth-tech-grid {
+  border-color: color-mix(in srgb, var(--accent-soft) 16%, #24374d);
+  background:
+    radial-gradient(circle at 44% 42%, color-mix(in srgb, var(--accent-soft) 10%, transparent), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
+}
+
+:root[data-theme='night'] .auth-orbit::after,
+:root[data-theme='night'] .auth-particle-field span {
+  background: rgba(16, 28, 43, 0.92);
+}
+
+:root[data-theme='night'] .auth-particle-field span {
+  border-color: color-mix(in srgb, var(--accent-soft) 30%, #223449);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--accent-soft) 26%, transparent);
+}
+
+:root[data-theme='night'] .auth-card {
+  border-color: color-mix(in srgb, var(--accent-soft) 18%, #24374d);
+  background:
+    linear-gradient(145deg, rgba(10, 18, 29, 0.96), rgba(16, 28, 43, 0.92)),
+    radial-gradient(circle at top right, color-mix(in srgb, var(--accent-soft) 10%, transparent), transparent 34%);
+  box-shadow:
+    0 24px 58px rgba(0, 0, 0, 0.44),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 42px color-mix(in srgb, var(--accent-soft) 10%, transparent);
+}
+
+:root[data-theme='night'] .auth-card::before {
+  border-top-color: rgba(255, 255, 255, 0.05);
+  background: linear-gradient(112deg, color-mix(in srgb, var(--accent-soft) 12%, transparent), transparent 44%);
+}
+
+:root[data-theme='night'] .login-card-glow {
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent-soft) 20%, transparent), transparent 72%);
+}
+
+:root[data-theme='night'] .auth-logo-frame {
+  border-color: color-mix(in srgb, var(--accent-soft) 24%, #2a435c);
+  background: linear-gradient(145deg, #162537, #0f1a28);
+  box-shadow:
+    0 0 0 8px rgba(6, 12, 19, 0.52),
+    0 18px 34px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+:root[data-theme='night'] .login-access-note {
+  border-color: color-mix(in srgb, var(--accent-soft) 16%, #223449);
+  background: rgba(10, 18, 29, 0.74);
+  color: var(--tech-text);
+}
+
+:root[data-theme='night'] .login-access-note small {
+  color: var(--tech-muted);
+}
+
+:root[data-theme='night'] .login-field input {
+  border-color: color-mix(in srgb, var(--accent-soft) 20%, #24374d);
+  background: linear-gradient(145deg, rgba(12, 21, 33, 0.96), rgba(18, 30, 46, 0.92));
+  color: var(--tech-text);
+  box-shadow:
+    inset 2px 2px 8px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+:root[data-theme='night'] .login-field input::placeholder {
+  color: color-mix(in srgb, var(--tech-muted) 82%, transparent);
+}
+
+:root[data-theme='night'] .login-field input:focus {
+  border-color: color-mix(in srgb, var(--accent-soft) 40%, #24374d);
+  background: linear-gradient(145deg, rgba(14, 24, 38, 0.98), rgba(20, 34, 52, 0.94));
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--accent-soft) 16%, transparent),
+    inset 2px 2px 8px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+:root[data-theme='night'] .password-visibility-toggle {
+  border-color: color-mix(in srgb, var(--accent-soft) 20%, #24374d);
+  background: rgba(10, 18, 29, 0.8);
+  color: var(--home-blue-soft);
+}
+
+:root[data-theme='night'] .password-visibility-toggle:hover,
+:root[data-theme='night'] .password-visibility-toggle:focus-visible {
+  border-color: color-mix(in srgb, var(--accent-soft) 36%, #24374d);
+  background: rgba(16, 28, 43, 0.96);
+  color: var(--tech-text);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-soft) 14%, transparent);
+}
+
+:root[data-theme='night'] .form-error {
+  border-color: color-mix(in srgb, var(--color-danger) 28%, #4a1f24);
+  background: rgba(63, 19, 24, 0.62);
+  color: #ffb8b1;
+}
+
 .eyebrow {
   color: var(--primary);
   font-size: 0.78rem;
