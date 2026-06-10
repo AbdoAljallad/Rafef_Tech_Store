@@ -1,5 +1,6 @@
-import { EmptyState } from '../EmptyState/EmptyState';
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+import { EmptyState } from '../EmptyState/EmptyState';
 
 export type DataTableColumn<T> = {
   key: string;
@@ -12,17 +13,28 @@ type DataTableProps<T> = {
   rows: T[];
   getRowKey: (row: T) => string | number;
   isLoading?: boolean;
+  loadingText?: string;
   emptyText?: string;
   onRowClick?: (row: T) => void;
 };
 
-export function DataTable<T>({ columns, rows, getRowKey, isLoading, emptyText, onRowClick }: DataTableProps<T>) {
+export function DataTable<T>({
+  columns,
+  rows,
+  getRowKey,
+  isLoading,
+  loadingText,
+  emptyText,
+  onRowClick,
+}: DataTableProps<T>) {
+  const { t } = useTranslation('common');
+
   if (isLoading) {
-    return <div className="table-state">Загрузка...</div>;
+    return <div className="table-state">{loadingText || t('loading')}</div>;
   }
 
   if (rows.length === 0) {
-    return <EmptyState title={emptyText || 'Нет данных'} />;
+    return <EmptyState title={emptyText || t('empty')} />;
   }
 
   return (

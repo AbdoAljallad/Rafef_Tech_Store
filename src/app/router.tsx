@@ -25,6 +25,7 @@ import { ReceiptPage } from '../routes/repair/ReceiptPage';
 import { PosPage } from '../routes/sales/PosPage';
 import { InvoiceDetailPage } from '../routes/sales/InvoiceDetailPage';
 import { SalesReceiptPage } from '../routes/sales/SalesReceiptPage';
+import { SalesHistoryPage } from '../routes/sales/SalesHistoryPage';
 import { LoginPage } from '../routes/login/LoginPage';
 import { NotFoundPage } from '../routes/not-found/NotFoundPage';
 import { ModulePlaceholderPage } from '../routes/placeholders/ModulePlaceholderPage';
@@ -152,8 +153,16 @@ export const router = createBrowserRouter([
             element: withPermission('/sales/pos', <RequirePermission permission="sales.invoices.create"><PosPage /></RequirePermission>),
           },
           {
+            path: 'sales/invoices',
+            element: <RequirePermission permission="sales.invoices.view"><SalesHistoryPage /></RequirePermission>,
+          },
+          {
             path: 'sales/invoices/:id',
             element: <RequirePermission permission="sales.invoices.view"><InvoiceDetailPage /></RequirePermission>,
+          },
+          {
+            path: 'sales/invoices/:id/print',
+            element: <RequirePermission permission="sales.invoices.view"><SalesReceiptPage /></RequirePermission>,
           },
           {
             path: 'sales/invoices/:id/receipt',

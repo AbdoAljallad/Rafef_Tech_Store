@@ -1,9 +1,25 @@
 import { httpClient } from '../../../shared/api/httpClient';
 import type { Category, CategoryRequest, Product, ProductRequest, ProductUpdateRequest, Service, SupplierRequest, Unit } from '../types/catalog.types';
 
+type ProductListOptions = {
+  page?: number;
+  pageSize?: number;
+};
+
 export const catalogApi = {
-  listProducts(search?: string) {
-    const params = search ? `?search=${encodeURIComponent(search)}` : '';
+  listProducts(search?: string, options?: ProductListOptions) {
+    const query = new URLSearchParams();
+    if (search) {
+      query.set('search', search);
+    }
+    if (options?.page) {
+      query.set('page', String(options.page));
+    }
+    if (options?.pageSize) {
+      query.set('pageSize', String(options.pageSize));
+    }
+
+    const params = query.toString() ? `?${query.toString()}` : '';
     return httpClient.get<{ items: Product[] }>(`/api/products${params}`);
   },
   createProduct(payload: ProductRequest) {

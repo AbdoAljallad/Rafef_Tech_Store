@@ -1,4 +1,17 @@
 import { pool } from '../../database/mysql.js';
+const liveReservationJoin = `
+  LEFT JOIN (
+    SELECT product_id, COALESCE(SUM(quantity), 0) AS quantity_reserved_live
+    FROM inventory_stock_reservations
+    WHERE status = 'active'
+    GROUP BY product_id
+  ) sr ON sr.product_id = p.id
+`;
+const stockAvailabilitySelect = `
+  COALESCE(sb.quantity_on_hand, 0) AS quantity_on_hand,
+  COALESCE(sr.quantity_reserved_live, 0) AS quantity_reserved,
+  GREATEST(COALESCE(sb.quantity_on_hand, 0) - COALESCE(sr.quantity_reserved_live, 0), 0) AS quantity_available
+`;
 function nullable(value) {
     return value === undefined ? null : value;
 }
@@ -8,34 +21,81 @@ export class CatalogRepository {
         const values = [];
         let where = 'WHERE p.is_active = TRUE';
         if (search) {
-            where += ' AND (p.default_name LIKE ? OR p.sku LIKE ?)';
+            where += ` AND (
+        p.default_name LIKE ?
+        OR p.sku LIKE ?
+        OR c.default_name LIKE ?
+        OR EXISTS (
+          SELECT 1
+          FROM catalog_product_barcodes b
+          WHERE b.product_id = p.id AND b.barcode LIKE ?
+        )
+      )`;
             const like = `%${search}%`;
-            values.push(like, like);
+            values.push(like, like, like, like);
         }
-        const [rows] = await pool.execute(`SELECT p.*, c.default_name AS category_name, u.name_ru AS unit_name_ru
+        const [rows] = await pool.execute(`SELECT
+         p.*,
+         c.default_name AS category_name,
+         c.code AS category_code,
+         c.show_in_sales,
+         c.show_in_repair,
+         c.show_in_projects,
+         c.show_in_creative,
+         u.name_ru AS unit_name_ru,
+         pb.barcode AS primary_barcode,
+         ${stockAvailabilitySelect}
        FROM catalog_products p
        INNER JOIN catalog_categories c ON c.id = p.category_id
        INNER JOIN catalog_units u ON u.id = p.unit_id
+       LEFT JOIN catalog_product_barcodes pb ON pb.product_id = p.id AND pb.is_primary = TRUE
+       LEFT JOIN inventory_stock_balances sb ON sb.product_id = p.id
+       ${liveReservationJoin}
        ${where}
        ORDER BY p.created_at DESC
        LIMIT ${params.limit} OFFSET ${params.offset}`, values);
         return rows;
     }
     async findProductById(id) {
-        const [rows] = await pool.execute(`SELECT p.*, c.default_name AS category_name, u.name_ru AS unit_name_ru
+        const [rows] = await pool.execute(`SELECT
+         p.*,
+         c.default_name AS category_name,
+         c.code AS category_code,
+         c.show_in_sales,
+         c.show_in_repair,
+         c.show_in_projects,
+         c.show_in_creative,
+         u.name_ru AS unit_name_ru,
+         pb.barcode AS primary_barcode,
+         ${stockAvailabilitySelect}
        FROM catalog_products p
        INNER JOIN catalog_categories c ON c.id = p.category_id
        INNER JOIN catalog_units u ON u.id = p.unit_id
+       LEFT JOIN catalog_product_barcodes pb ON pb.product_id = p.id AND pb.is_primary = TRUE
+       LEFT JOIN inventory_stock_balances sb ON sb.product_id = p.id
+       ${liveReservationJoin}
        WHERE p.id = ?
        LIMIT 1`, [id]);
         return rows[0] ?? null;
     }
     async findProductByBarcode(barcode) {
-        const [rows] = await pool.execute(`SELECT p.*, c.default_name AS category_name, u.name_ru AS unit_name_ru
+        const [rows] = await pool.execute(`SELECT
+         p.*,
+         c.default_name AS category_name,
+         c.code AS category_code,
+         c.show_in_sales,
+         c.show_in_repair,
+         c.show_in_projects,
+         c.show_in_creative,
+         u.name_ru AS unit_name_ru,
+         b.barcode AS primary_barcode,
+         ${stockAvailabilitySelect}
        FROM catalog_product_barcodes b
        INNER JOIN catalog_products p ON p.id = b.product_id
        INNER JOIN catalog_categories c ON c.id = p.category_id
        INNER JOIN catalog_units u ON u.id = p.unit_id
+       LEFT JOIN inventory_stock_balances sb ON sb.product_id = p.id
+       ${liveReservationJoin}
        WHERE b.barcode = ? AND p.is_active = TRUE
        LIMIT 1`, [barcode]);
         return rows[0] ?? null;
@@ -59,6 +119,8 @@ export class CatalogRepository {
         if (input.barcode) {
             await this.addBarcode(result.insertId, input.barcode, true);
         }
+        await pool.execute(`INSERT IGNORE INTO inventory_stock_balances (product_id, quantity_on_hand, quantity_reserved)
+       VALUES (?, 0, 0)`, [result.insertId]);
         return this.findProductById(result.insertId);
     }
     async updateProduct(id, input, userId) {

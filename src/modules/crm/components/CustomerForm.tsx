@@ -2,13 +2,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, Trash2, Upload, UserRound } from 'lucide-react';
 import { useMemo } from 'react';
 import { useFieldArray, useForm, type Resolver } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../../../shared/ui/Button';
 import { Checkbox } from '../../../shared/ui/Checkbox';
 import { Input } from '../../../shared/ui/Input';
 import { Select } from '../../../shared/ui/Select';
 import { Textarea } from '../../../shared/ui/Textarea';
-import { customerFormSchema, type CustomerFormValues } from '../validators/customer.schemas';
 import type { Customer } from '../types/crm.types';
+import { customerFormSchema, type CustomerFormValues } from '../validators/customer.schemas';
 
 type CustomerFormProps = {
   customer?: Customer;
@@ -44,6 +45,7 @@ function getInitialContacts(customer?: Customer): CustomerFormValues['contacts']
 }
 
 export function CustomerForm({ customer, onSubmit, onCancel, isSubmitting }: CustomerFormProps) {
+  const { t } = useTranslation(['app', 'common']);
   const form = useForm<CustomerFormValues>({
     resolver: zodResolver(customerFormSchema) as unknown as Resolver<CustomerFormValues>,
     defaultValues: {
@@ -77,7 +79,7 @@ export function CustomerForm({ customer, onSubmit, onCancel, isSubmitting }: Cus
     const imageData = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result ?? ''));
-      reader.onerror = () => reject(new Error('Не удалось прочитать файл'));
+      reader.onerror = () => reject(new Error(t('customers.form.fileReadError', { ns: 'app' })));
       reader.readAsDataURL(file);
     });
 
@@ -181,8 +183,8 @@ export function CustomerForm({ customer, onSubmit, onCancel, isSubmitting }: Cus
 
       <section className="form-section">
         <div className="form-section-header">
-          <h3>Основные данные</h3>
-          <p>Имя, тип и фото клиента используются в CRM, ремонте, продажах и проектах.</p>
+          <h3>{t('customers.form.basicTitle', { ns: 'app' })}</h3>
+          <p>{t('customers.form.basicText', { ns: 'app' })}</p>
         </div>
 
         <div className="customer-form-avatar">
@@ -192,7 +194,7 @@ export function CustomerForm({ customer, onSubmit, onCancel, isSubmitting }: Cus
           <div className="customer-form-avatar-actions">
             <label className="customer-form-file">
               <Upload size={18} aria-hidden="true" />
-              <span>Загрузить фото</span>
+              <span>{t('customers.form.uploadPhoto', { ns: 'app' })}</span>
               <input
                 type="file"
                 accept="image/*"
@@ -204,53 +206,57 @@ export function CustomerForm({ customer, onSubmit, onCancel, isSubmitting }: Cus
             </label>
             {avatarPreview ? (
               <Button type="button" variant="secondary" onClick={() => form.setValue('avatarUrl', null, { shouldDirty: true, shouldValidate: true })}>
-                Удалить фото
+                {t('customers.form.removePhoto', { ns: 'app' })}
               </Button>
             ) : null}
           </div>
         </div>
 
         <Input
-          label="Имя клиента *"
-          placeholder="Например: Ахмед Али или ООО «Рафеф»"
+          label={t('customers.form.nameLabel', { ns: 'app' })}
+          placeholder={t('customers.form.namePlaceholder', { ns: 'app' })}
           autoComplete="name"
           error={form.formState.errors.name?.message}
           {...form.register('name')}
         />
-        <Select label="Тип клиента" {...form.register('customerType')}>
-          <option value="person">Физическое лицо</option>
-          <option value="business">Компания</option>
+        <Select label={t('customers.form.typeLabel', { ns: 'app' })} {...form.register('customerType')}>
+          <option value="person">{t('customers.form.types.person', { ns: 'app' })}</option>
+          <option value="business">{t('customers.form.types.business', { ns: 'app' })}</option>
         </Select>
       </section>
 
       <section className="form-section">
         <div className="form-section-header">
-          <h3>Способы связи</h3>
-          <p>Добавьте один или несколько способов связи уже на этапе создания клиента.</p>
+          <h3>{t('customers.form.contactsTitle', { ns: 'app' })}</h3>
+          <p>{t('customers.form.contactsText', { ns: 'app' })}</p>
         </div>
 
         <div className="customer-contacts-list">
           {contactsFieldArray.fields.map((field, index) => (
             <div className="customer-contact-card" key={field.id}>
               <div className="customer-contact-head">
-                <strong>Контакт {index + 1}</strong>
+                <strong>{t('customers.form.contactItem', { ns: 'app', index: index + 1 })}</strong>
                 <Button type="button" variant="secondary" onClick={() => contactsFieldArray.remove(index)}>
                   <Trash2 size={16} aria-hidden="true" />
-                  <span>Удалить</span>
+                  <span>{t('customers.form.removeContact', { ns: 'app' })}</span>
                 </Button>
               </div>
 
               <div className="customer-contact-grid">
-                <Select label="Тип связи" error={form.formState.errors.contacts?.[index]?.contactType?.message} {...form.register(`contacts.${index}.contactType`)}>
-                  <option value="phone">Телефон</option>
-                  <option value="email">Email</option>
-                  <option value="whatsapp">WhatsApp</option>
-                  <option value="telegram">Telegram</option>
-                  <option value="other">Другое</option>
+                <Select
+                  label={t('customers.form.contactTypeLabel', { ns: 'app' })}
+                  error={form.formState.errors.contacts?.[index]?.contactType?.message}
+                  {...form.register(`contacts.${index}.contactType`)}
+                >
+                  <option value="phone">{t('customers.form.contactTypes.phone', { ns: 'app' })}</option>
+                  <option value="email">{t('customers.form.contactTypes.email', { ns: 'app' })}</option>
+                  <option value="whatsapp">{t('customers.form.contactTypes.whatsapp', { ns: 'app' })}</option>
+                  <option value="telegram">{t('customers.form.contactTypes.telegram', { ns: 'app' })}</option>
+                  <option value="other">{t('customers.form.contactTypes.other', { ns: 'app' })}</option>
                 </Select>
                 <Input
-                  label="Значение"
-                  placeholder="Введите телефон, email или другой контакт"
+                  label={t('customers.form.contactValueLabel', { ns: 'app' })}
+                  placeholder={t('customers.form.contactValuePlaceholder', { ns: 'app' })}
                   error={form.formState.errors.contacts?.[index]?.contactValue?.message}
                   {...form.register(`contacts.${index}.contactValue`)}
                 />
@@ -258,13 +264,13 @@ export function CustomerForm({ customer, onSubmit, onCancel, isSubmitting }: Cus
 
               <div className="customer-contact-flags">
                 <Checkbox
-                  label="Основной контакт"
+                  label={t('customers.form.primaryContact', { ns: 'app' })}
                   checked={Boolean(contacts?.[index]?.isPrimary)}
                   onChange={(event) => {
                     form.setValue(`contacts.${index}.isPrimary`, event.target.checked, { shouldDirty: true });
                   }}
                 />
-                {contactPrimaryLabels[index] ? <small>Используется для главного канала связи этого типа.</small> : null}
+                {contactPrimaryLabels[index] ? <small>{t('customers.form.primaryHint', { ns: 'app' })}</small> : null}
               </div>
             </div>
           ))}
@@ -276,26 +282,31 @@ export function CustomerForm({ customer, onSubmit, onCancel, isSubmitting }: Cus
           onClick={() => contactsFieldArray.append({ contactType: 'phone', contactValue: '', isPrimary: contacts.length === 0 })}
         >
           <Plus size={16} aria-hidden="true" />
-          <span>Добавить способ связи</span>
+          <span>{t('customers.form.addContact', { ns: 'app' })}</span>
         </Button>
       </section>
 
       <section className="form-section">
         <div className="form-section-header">
-          <h3>Заметки</h3>
-          <p>Внутренний комментарий для команды магазина.</p>
+          <h3>{t('customers.form.notesTitle', { ns: 'app' })}</h3>
+          <p>{t('customers.form.notesText', { ns: 'app' })}</p>
         </div>
-        <Textarea label="Заметки" placeholder="Особенности клиента, предпочтения, важные детали" rows={5} {...form.register('notes')} />
+        <Textarea
+          label={t('customers.form.notesLabel', { ns: 'app' })}
+          placeholder={t('customers.form.notesPlaceholder', { ns: 'app' })}
+          rows={5}
+          {...form.register('notes')}
+        />
       </section>
 
       <div className="form-actions">
         {onCancel ? (
           <Button type="button" variant="secondary" onClick={onCancel}>
-            Отмена
+            {t('common:actions.cancel')}
           </Button>
         ) : null}
         <Button type="submit" isLoading={isSubmitting}>
-          Сохранить
+          {t('common:actions.save')}
         </Button>
       </div>
     </form>

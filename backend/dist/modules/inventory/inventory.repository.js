@@ -22,11 +22,17 @@ export class InventoryRepository {
          p.default_name,
          u.name_ru AS unit_name_ru,
          COALESCE(b.quantity_on_hand, 0) AS quantity_on_hand,
-         COALESCE(b.quantity_reserved, 0) AS quantity_reserved,
-         COALESCE(b.quantity_on_hand, 0) - COALESCE(b.quantity_reserved, 0) AS quantity_available
+         COALESCE(r.quantity_reserved_live, 0) AS quantity_reserved,
+         GREATEST(COALESCE(b.quantity_on_hand, 0) - COALESCE(r.quantity_reserved_live, 0), 0) AS quantity_available
        FROM catalog_products p
        INNER JOIN catalog_units u ON u.id = p.unit_id
        LEFT JOIN inventory_stock_balances b ON b.product_id = p.id
+       LEFT JOIN (
+         SELECT product_id, COALESCE(SUM(quantity), 0) AS quantity_reserved_live
+         FROM inventory_stock_reservations
+         WHERE status = 'active'
+         GROUP BY product_id
+       ) r ON r.product_id = p.id
        ${where}
        ORDER BY p.default_name
        LIMIT ${params.limit} OFFSET ${params.offset}`, values);
@@ -283,7 +289,15 @@ export class InventoryRepository {
     }
     async lockBalance(connection, productId) {
         await connection.execute('INSERT IGNORE INTO inventory_stock_balances (product_id) VALUES (?)', [productId]);
-        const [rows] = await connection.execute('SELECT * FROM inventory_stock_balances WHERE product_id = ? FOR UPDATE', [productId]);
+        await connection.execute('SELECT product_id FROM inventory_stock_balances WHERE product_id = ? FOR UPDATE', [productId]);
+        await connection.execute(`UPDATE inventory_stock_balances b
+       SET quantity_reserved = COALESCE((
+         SELECT SUM(r.quantity)
+         FROM inventory_stock_reservations r
+         WHERE r.product_id = b.product_id AND r.status = 'active'
+       ), 0)
+       WHERE b.product_id = ?`, [productId]);
+        const [rows] = await connection.execute('SELECT * FROM inventory_stock_balances WHERE product_id = ?', [productId]);
         const balance = rows[0];
         if (!balance) {
             throw new AppError(404, 'NOT_FOUND', 'Stock balance not found');

@@ -2,19 +2,22 @@ import { useQuery } from '@tanstack/react-query';
 import { History, PackagePlus, SlidersHorizontal } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { catalogApi } from '../../modules/catalog/api/catalog.api';
 import { inventoryApi } from '../../modules/inventory/api/inventory.api';
 import type { StockBalance } from '../../modules/inventory/types/inventory.types';
-import { DataTable } from '../../shared/components/DataTable/DataTable';
+import { DataTable, type DataTableColumn } from '../../shared/components/DataTable/DataTable';
 import { SearchInput } from '../../shared/components/SearchInput/SearchInput';
 import { Badge } from '../../shared/ui/Badge';
 import { Button } from '../../shared/ui/Button';
+import { formatListingResults } from '../../shared/utils/listingText';
 
-function quantity(value: string) {
-  return Number(value).toLocaleString('ru-RU', { maximumFractionDigits: 4 });
+function formatQuantity(value: string, locale: string) {
+  return Number(value).toLocaleString(locale, { maximumFractionDigits: 4 });
 }
 
 export function InventoryStockPage() {
+  const { t, i18n } = useTranslation('app');
   const [search, setSearch] = useState('');
   const navigate = useNavigate();
   const stockQuery = useQuery({ queryKey: ['inventory-stock', search], queryFn: () => inventoryApi.listStock(search) });
@@ -23,6 +26,8 @@ export function InventoryStockPage() {
     () => new Map((productsQuery.data?.items ?? []).map((product) => [product.id, product])),
     [productsQuery.data?.items],
   );
+  const rows = stockQuery.data?.items ?? [];
+  const locale = i18n.resolvedLanguage || 'ru';
 
   function stockStatus(row: StockBalance) {
     const product = productsById.get(row.product_id);
@@ -30,52 +35,56 @@ export function InventoryStockPage() {
     const available = Number(row.quantity_available);
 
     if (threshold > 0 && available <= threshold) {
-      return <Badge tone="warning">Низкий остаток</Badge>;
+      return <Badge tone="warning">{t('inventory.statusLow')}</Badge>;
     }
 
-    return <Badge tone="success">В норме</Badge>;
+    return <Badge tone="success">{t('inventory.statusOk')}</Badge>;
   }
+
+  const columns = useMemo<DataTableColumn<StockBalance>[]>(() => ([
+    { key: 'name', header: t('inventory.product'), render: (row) => <Link to={`/catalog/products/${row.product_id}`}>{row.default_name}</Link> },
+    { key: 'sku', header: t('catalog.sku'), render: (row) => row.sku },
+    { key: 'category', header: t('inventory.category'), render: (row) => productsById.get(row.product_id)?.category_name ?? '-' },
+    { key: 'onHand', header: t('inventory.onHand'), render: (row) => formatQuantity(row.quantity_on_hand, locale) },
+    { key: 'reserved', header: t('inventory.reserved'), render: (row) => formatQuantity(row.quantity_reserved, locale) },
+    { key: 'available', header: t('inventory.available'), render: (row) => formatQuantity(row.quantity_available, locale) },
+    { key: 'threshold', header: t('inventory.threshold'), render: (row) => formatQuantity(productsById.get(row.product_id)?.reorder_threshold ?? '0', locale) },
+    { key: 'status', header: t('inventory.status'), render: stockStatus },
+  ]), [locale, productsById, t]);
 
   return (
     <>
       <header className="page-header">
         <div>
-          <p className="eyebrow">Inventory</p>
-          <h1>Складские остатки</h1>
+          <p className="eyebrow">{t('inventory.module')}</p>
+          <h1>{t('inventory.stockTitle')}</h1>
         </div>
         <div className="page-actions">
+          <span className="count-pill">{formatListingResults(t, { from: rows.length ? 1 : 0, to: rows.length })}</span>
           <Button variant="secondary" icon={<History size={18} />} onClick={() => navigate('/inventory/movements')}>
-            Движения
+            {t('inventory.movements')}
           </Button>
           <Button variant="secondary" icon={<PackagePlus size={18} />} onClick={() => navigate('/inventory/purchases')}>
-            Закупки
+            {t('inventory.purchases')}
           </Button>
           <Button variant="secondary" icon={<SlidersHorizontal size={18} />} onClick={() => navigate('/inventory/adjustments')}>
-            Корректировки
+            {t('inventory.adjustments')}
           </Button>
         </div>
       </header>
 
       <section className="page-toolbar">
-        <SearchInput placeholder="Поиск по названию или SKU" value={search} onChange={(event) => setSearch(event.target.value)} />
-        <Button variant="secondary" onClick={() => navigate('/inventory/reservations')}>Резервы</Button>
+        <SearchInput placeholder={t('inventory.searchPlaceholder')} value={search} onChange={(event) => setSearch(event.target.value)} />
+        <Button variant="secondary" onClick={() => navigate('/inventory/reservations')}>{t('inventory.reservations')}</Button>
       </section>
 
       <DataTable
-        rows={stockQuery.data?.items ?? []}
+        rows={rows}
         isLoading={stockQuery.isLoading}
-        emptyText={stockQuery.isError ? 'Не удалось загрузить складские остатки' : 'Остатки не найдены'}
+        loadingText={t('home.loading')}
+        emptyText={stockQuery.isError ? t('inventory.loadFailed') : t('inventory.emptyStock')}
         getRowKey={(row) => row.product_id}
-        columns={[
-          { key: 'name', header: 'Товар', render: (row) => <Link to={`/catalog/products/${row.product_id}`}>{row.default_name}</Link> },
-          { key: 'sku', header: 'SKU', render: (row) => row.sku },
-          { key: 'category', header: 'Категория', render: (row) => productsById.get(row.product_id)?.category_name ?? '-' },
-          { key: 'onHand', header: 'На складе', render: (row) => quantity(row.quantity_on_hand) },
-          { key: 'reserved', header: 'В резерве', render: (row) => quantity(row.quantity_reserved) },
-          { key: 'available', header: 'Доступно', render: (row) => quantity(row.quantity_available) },
-          { key: 'threshold', header: 'Мин. остаток', render: (row) => quantity(productsById.get(row.product_id)?.reorder_threshold ?? '0') },
-          { key: 'status', header: 'Статус', render: stockStatus },
-        ]}
+        columns={columns}
       />
     </>
   );

@@ -21,6 +21,7 @@ export class RepairService {
     listModels() { return this.repo.listModels(); }
     createModel(input) { return this.repo.createModel(input); }
     createDevice(input) { return this.repo.createDevice(input); }
+    listCustomerDevices(customerId) { return this.repo.listCustomerDevices(customerId); }
     listOrders(params) { return this.repo.listOrders(params); }
     async getOrder(id) {
         const order = await this.repo.findOrder(id);
@@ -29,8 +30,10 @@ export class RepairService {
         return order;
     }
     receipt(id) { return this.repo.receipt(id); }
+    getOrderBilling(id) { return this.repo.getOrderBilling(id); }
     async createOrder(input, userId, ip) {
-        const order = await this.repo.createOrder(input, userId);
+        const deviceId = await this.resolveOrderDeviceId(input);
+        const order = await this.repo.createOrder({ ...input, deviceId }, userId);
         const orderId = Number(order.id);
         await this.audit.log({ actorUserId: userId, actionCode: 'repair.order.created', module: 'repair', entityType: 'repair_orders', entityId: orderId, newValues: input, ipAddress: ip });
         await this.events.create({ module: 'repair', eventType: 'repair.created', title: 'Repair order created', entityType: 'repair_orders', entityId: orderId, actorUserId: userId });
@@ -49,14 +52,147 @@ export class RepairService {
         await this.audit.log({ actorUserId: userId, actionCode: 'repair.part.reserved', module: 'repair', entityType: 'repair_orders', entityId: orderId, newValues: part, ipAddress: ip });
         return part;
     }
+    async updateService(orderId, serviceId, input, userId, ip) {
+        const order = await this.repo.updateService(orderId, serviceId, input);
+        await this.audit.log({
+            actorUserId: userId,
+            actionCode: 'repair.service.updated',
+            module: 'repair',
+            entityType: 'repair_orders',
+            entityId: orderId,
+            newValues: { serviceId, ...input },
+            ipAddress: ip,
+        });
+        return order;
+    }
+    async updatePart(orderId, partId, input, userId, ip) {
+        const order = await this.repo.updatePart(orderId, partId, input, userId);
+        await this.audit.log({
+            actorUserId: userId,
+            actionCode: 'repair.part.updated',
+            module: 'repair',
+            entityType: 'repair_orders',
+            entityId: orderId,
+            newValues: { partId, ...input },
+            ipAddress: ip,
+        });
+        return order;
+    }
+    async removeService(orderId, serviceId, userId, ip) {
+        const service = await this.repo.removeService(orderId, serviceId);
+        await this.audit.log({
+            actorUserId: userId,
+            actionCode: 'repair.service.removed',
+            module: 'repair',
+            entityType: 'repair_orders',
+            entityId: orderId,
+            newValues: service,
+            ipAddress: ip,
+        });
+    }
+    async removePart(orderId, partId, userId, ip) {
+        const result = await this.repo.removePart(orderId, partId, userId);
+        await this.audit.log({
+            actorUserId: userId,
+            actionCode: 'repair.part.removed',
+            module: 'repair',
+            entityType: 'repair_orders',
+            entityId: orderId,
+            newValues: result.part,
+            ipAddress: ip,
+        });
+        if (result.releasedReservation) {
+            await this.audit.log({
+                actorUserId: userId,
+                actionCode: 'inventory.reservation.released',
+                module: 'inventory',
+                entityType: 'inventory_stock_reservations',
+                entityId: result.releasedReservation.reservationId,
+                newValues: result.releasedReservation,
+                ipAddress: ip,
+            });
+        }
+    }
     async changeStatus(orderId, input, userId, ip) {
-        const order = await this.repo.changeStatus(orderId, input, userId);
+        const result = await this.repo.changeStatus(orderId, input, userId);
         await this.audit.log({ actorUserId: userId, actionCode: 'repair.status.changed', module: 'repair', entityType: 'repair_orders', entityId: orderId, newValues: input, ipAddress: ip });
+        for (const reservation of result.releasedReservations) {
+            await this.audit.log({
+                actorUserId: userId,
+                actionCode: 'inventory.reservation.released',
+                module: 'inventory',
+                entityType: 'inventory_stock_reservations',
+                entityId: reservation.reservationId,
+                newValues: reservation,
+                ipAddress: ip,
+            });
+        }
         await this.events.create({ module: 'repair', eventType: 'repair.status_changed', title: 'Repair status changed', entityType: 'repair_orders', entityId: orderId, actorUserId: userId });
         if (input.status === 'ready_for_delivery') {
             await this.events.create({ module: 'repair', eventType: 'repair.ready', title: 'Repair ready for delivery', entityType: 'repair_orders', entityId: orderId, severity: 'important', actorUserId: userId });
         }
-        return order;
+        return result.order;
+    }
+    async deleteOrder(orderId, userId, ip) {
+        const result = await this.repo.deleteOrder(orderId, userId);
+        await this.audit.log({
+            actorUserId: userId,
+            actionCode: 'repair.order.deleted',
+            module: 'repair',
+            entityType: 'repair_orders',
+            entityId: orderId,
+            newValues: result,
+            ipAddress: ip,
+        });
+        for (const reservation of result.releasedReservations) {
+            await this.audit.log({
+                actorUserId: userId,
+                actionCode: 'inventory.reservation.released',
+                module: 'inventory',
+                entityType: 'inventory_stock_reservations',
+                entityId: reservation.reservationId,
+                newValues: reservation,
+                ipAddress: ip,
+            });
+        }
+        await this.events.create({
+            module: 'repair',
+            eventType: 'repair.deleted',
+            title: 'Repair order deleted',
+            entityType: 'repair_orders',
+            entityId: orderId,
+            severity: 'important',
+            actorUserId: userId,
+        });
+        return result;
     }
     addNote(orderId, input, userId) { return this.repo.addNote(orderId, input, userId); }
+    async resolveOrderDeviceId(input) {
+        if (input.deviceId) {
+            return input.deviceId;
+        }
+        if (!input.newDevice) {
+            throw new AppError(400, 'VALIDATION_ERROR', 'Device is required');
+        }
+        const device = await this.repo.createDevice({
+            customerId: input.customerId,
+            ...this.normalizeOrderDevice(input.newDevice),
+        });
+        const createdId = Number(device?.id);
+        if (!createdId) {
+            throw new AppError(500, 'INTERNAL_ERROR', 'Failed to create repair device');
+        }
+        return createdId;
+    }
+    normalizeOrderDevice(input) {
+        return {
+            categoryId: input.categoryId,
+            brandId: input.brandId ?? null,
+            modelId: input.modelId ?? null,
+            deviceName: input.deviceName,
+            serialNo: input.serialNo ?? null,
+            imei: input.imei ?? null,
+            notes: input.notes ?? null,
+        };
+    }
 }

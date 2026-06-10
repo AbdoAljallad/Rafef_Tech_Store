@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { catalogApi } from '../../modules/catalog/api/catalog.api';
 import { inventoryApi } from '../../modules/inventory/api/inventory.api';
@@ -23,6 +24,8 @@ import { Select } from '../../shared/ui/Select';
 import { Textarea } from '../../shared/ui/Textarea';
 
 export function InventoryPurchasesPage() {
+  const { t, i18n } = useTranslation('app');
+  const locale = i18n.resolvedLanguage === 'ar' ? 'ar-EG' : 'ru-RU';
   const [lastPurchase, setLastPurchase] = useState<Purchase | null>(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -33,7 +36,7 @@ export function InventoryPurchasesPage() {
     mutationFn: inventoryApi.createPurchase,
     onSuccess: (response) => {
       setLastPurchase(response.purchase);
-      setMessage(`Закупка #${response.purchase.id} создана. Теперь ее можно принять на склад.`);
+      setMessage(t('inventory.purchasesPage.createdMessage', { id: response.purchase.id }));
       setError('');
       receiveForm.setValue('purchaseId', response.purchase.id);
     },
@@ -43,7 +46,7 @@ export function InventoryPurchasesPage() {
     mutationFn: inventoryApi.receivePurchase,
     onSuccess: async (response) => {
       setLastPurchase(response.purchase);
-      setMessage(`Закупка #${response.purchase.id} принята. Остатки обновлены.`);
+      setMessage(t('inventory.purchasesPage.receivedMessage', { id: response.purchase.id }));
       setError('');
       await queryClient.invalidateQueries({ queryKey: ['inventory-stock'] });
     },
@@ -74,10 +77,10 @@ export function InventoryPurchasesPage() {
     <>
       <header className="page-header">
         <div>
-          <p className="eyebrow">Inventory</p>
-          <h1>Закупки</h1>
+          <p className="eyebrow">{t('inventory.module')}</p>
+          <h1>{t('inventory.purchases')}</h1>
         </div>
-        <Link to="/inventory/stock">К остаткам</Link>
+        <Link to="/inventory/stock">{t('inventory.backToStock')}</Link>
       </header>
 
       {error ? <section className="form-error">{error}</section> : null}
@@ -85,30 +88,36 @@ export function InventoryPurchasesPage() {
 
       <section className="detail-grid">
         <article className="panel">
-          <h2>Создать закупку</h2>
+          <h2>{t('inventory.purchasesPage.createTitle')}</h2>
           <PermissionGate permission="inventory.purchases.manage">
             <form className="entity-form" onSubmit={createForm.handleSubmit(createPurchase)}>
-              <Input label="ID поставщика (необязательно)" type="number" error={createForm.formState.errors.supplierId?.message} {...createForm.register('supplierId')} />
-              <Select label="Товар" error={createForm.formState.errors.productId?.message} {...createForm.register('productId')}>
-                <option value={0}>Выберите товар</option>
+              <Input label={t('inventory.purchasesPage.supplierId')} type="number" error={createForm.formState.errors.supplierId?.message} {...createForm.register('supplierId')} />
+              <Select label={t('inventory.product')} error={createForm.formState.errors.productId?.message} {...createForm.register('productId')}>
+                <option value={0}>{t('inventory.selectProduct')}</option>
                 {(productsQuery.data?.items ?? []).map((product) => (
-                  <option key={product.id} value={product.id}>{product.sku} - {product.default_name}</option>
+                  <option key={product.id} value={product.id}>
+                    {product.sku} - {product.default_name}
+                  </option>
                 ))}
               </Select>
-              <Input label="Количество" type="number" step="0.0001" error={createForm.formState.errors.quantity?.message} {...createForm.register('quantity')} />
-              <Input label="Себестоимость за единицу" type="number" step="0.01" error={createForm.formState.errors.unitCost?.message} {...createForm.register('unitCost')} />
-              <Textarea label="Примечание" {...createForm.register('notes')} />
-              <Button type="submit" isLoading={createMutation.isPending}>Создать закупку</Button>
+              <Input label={t('inventory.quantity')} type="number" step="0.0001" error={createForm.formState.errors.quantity?.message} {...createForm.register('quantity')} />
+              <Input label={t('inventory.purchasesPage.unitCostPerItem')} type="number" step="0.01" error={createForm.formState.errors.unitCost?.message} {...createForm.register('unitCost')} />
+              <Textarea label={t('inventory.notes')} {...createForm.register('notes')} />
+              <Button type="submit" isLoading={createMutation.isPending}>
+                {t('inventory.purchasesPage.createSubmit')}
+              </Button>
             </form>
           </PermissionGate>
         </article>
 
         <aside className="panel entity-actions">
-          <h2>Приемка</h2>
+          <h2>{t('inventory.purchasesPage.receiveTitle')}</h2>
           <PermissionGate permission="inventory.purchases.manage">
             <form className="entity-form" onSubmit={receiveForm.handleSubmit(receivePurchase)}>
-              <Input label="ID закупки" type="number" error={receiveForm.formState.errors.purchaseId?.message} {...receiveForm.register('purchaseId')} />
-              <Button type="submit" isLoading={receiveMutation.isPending}>Принять на склад</Button>
+              <Input label={t('inventory.purchasesPage.purchaseId')} type="number" error={receiveForm.formState.errors.purchaseId?.message} {...receiveForm.register('purchaseId')} />
+              <Button type="submit" isLoading={receiveMutation.isPending}>
+                {t('inventory.purchasesPage.receiveSubmit')}
+              </Button>
             </form>
           </PermissionGate>
         </aside>
@@ -116,17 +125,19 @@ export function InventoryPurchasesPage() {
 
       {lastPurchase ? (
         <section className="panel">
-          <h2>Закупка #{lastPurchase.id}</h2>
-          <p><strong>Статус:</strong> <StatusBadge domain="inventoryPurchase" status={lastPurchase.status} /></p>
+          <h2>{t('inventory.purchasesPage.lastTitle', { id: lastPurchase.id })}</h2>
+          <p>
+            <strong>{t('inventory.status')}:</strong> <StatusBadge domain="inventoryPurchase" status={lastPurchase.status} />
+          </p>
           <DataTable
             rows={lastPurchase.lines}
             getRowKey={(line) => line.id}
-            emptyText="Строки закупки не найдены"
+            emptyText={t('inventory.purchasesPage.emptyLines')}
             columns={[
-              { key: 'product', header: 'Товар', render: (line) => productsById.get(line.product_id)?.default_name ?? line.product_id },
-              { key: 'quantity', header: 'Количество', render: (line) => line.quantity },
-              { key: 'cost', header: 'Себестоимость', render: (line) => <MoneyDisplay value={line.unit_cost} /> },
-              { key: 'received', header: 'Принято', render: (line) => line.received_quantity },
+              { key: 'product', header: t('inventory.product'), render: (line) => productsById.get(line.product_id)?.default_name ?? line.product_id },
+              { key: 'quantity', header: t('inventory.quantity'), render: (line) => Number(line.quantity).toLocaleString(locale, { maximumFractionDigits: 4 }) },
+              { key: 'cost', header: t('inventory.unitCost'), render: (line) => <MoneyDisplay value={line.unit_cost} /> },
+              { key: 'received', header: t('inventory.purchasesPage.received'), render: (line) => Number(line.received_quantity).toLocaleString(locale, { maximumFractionDigits: 4 }) },
             ]}
           />
         </section>

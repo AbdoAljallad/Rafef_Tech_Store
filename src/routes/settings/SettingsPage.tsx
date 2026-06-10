@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   BellRing,
   Check,
@@ -42,91 +43,20 @@ function getInitials(name: string) {
   return parts.map((part) => part[0]?.toUpperCase() ?? '').join('').slice(0, 2);
 }
 
-const languageOptions: Array<{ value: SystemLanguage; short: string; label: string; note: string }> = [
-  { value: 'ru', short: 'RU', label: 'Русский', note: 'Основной рабочий язык интерфейса' },
-  { value: 'ar', short: 'AR', label: 'العربية', note: 'Подготовлено для арабской локализации' },
-];
+function getRoleLabel(
+  code: string | undefined,
+  fallback: string | undefined,
+  t: (key: string, options?: Record<string, unknown>) => string,
+) {
+  if (code) {
+    return t(`settings.roles.${code}`, { ns: 'app', defaultValue: fallback ?? t('userCard.noRole', { ns: 'app' }) });
+  }
 
-const themeOptions: Array<{ value: SystemTheme; label: string; note: string; icon: typeof SunMedium }> = [
-  { value: 'light', label: 'Светлая', note: 'Чистая дневная тема с мягким контрастом', icon: SunMedium },
-  { value: 'night', label: 'Тёмная', note: 'Глубокая тёмная тема без агрессивного неона', icon: MoonStar },
-  { value: 'ice', label: 'Ледяная', note: 'Светлый холодный режим для аккуратных рабочих панелей', icon: Waves },
-  { value: 'custom', label: 'Пользовательская', note: 'Адаптивная тема, зависящая от выбранной цветовой палитры', icon: Sparkles },
-];
-
-const accentOptions: Array<{ value: SystemAccent; label: string; note: string; gradient: string }> = [
-  { value: 'blue', label: 'Синий', note: 'Универсальный корпоративный вариант', gradient: 'linear-gradient(135deg, #5db7ff, #1f7ae0)' },
-  { value: 'gold', label: 'Жёлтый', note: 'Тёплый деловой акцент для витрины и продаж', gradient: 'linear-gradient(135deg, #ffd86b, #c89212)' },
-  { value: 'red', label: 'Красный', note: 'Энергичный сценарий для активной торговли', gradient: 'linear-gradient(135deg, #ff98a5, #d34b58)' },
-  { value: 'emerald', label: 'Изумрудный', note: 'Свежий технологичный тон для сервиса и склада', gradient: 'linear-gradient(135deg, #63e0b7, #169d72)' },
-  { value: 'violet', label: 'Фиолетовый', note: 'Более премиальный и мягкий контраст', gradient: 'linear-gradient(135deg, #baa3ff, #7c5ce0)' },
-];
-
-const navigationCards = [
-  {
-    icon: UserRound,
-    title: 'Мой профиль',
-    description: 'Измените имя, логин, фото, пароль и просмотрите историю собственных действий.',
-    to: '/settings/profile',
-  },
-  {
-    icon: CreditCard,
-    title: 'Платёжные настройки',
-    description: 'Откройте способы оплаты и финансовые параметры, влияющие на продажи и возвраты.',
-    to: '/finance/payment-methods',
-  },
-  {
-    icon: Cog,
-    title: 'Системные счета',
-    description: 'Перейдите к служебным счетам, кассам и финансовым объектам системы.',
-    to: '/finance/accounts',
-  },
-];
-
-const settingsDomainCards = [
-  {
-    icon: BellRing,
-    title: 'Уведомления и автоматизация',
-    items: [
-      { label: 'Порог низкого остатка', value: '7 единиц' },
-      { label: 'Критические уведомления', value: 'Telegram + внутренняя лента' },
-      { label: 'Тикер событий', value: 'Обновление каждые 30 секунд' },
-      { label: 'Автосоздание задач', value: 'Включено для ремонта и проектов' },
-    ],
-  },
-  {
-    icon: UserRound,
-    title: 'CRM и клиенты',
-    items: [
-      { label: 'Код клиента', value: 'Автоматический формат CUST-####' },
-      { label: 'Основные каналы связи', value: 'Телефон, WhatsApp, Telegram' },
-      { label: 'Фото клиента', value: 'До 4 МБ на изображение' },
-      { label: 'Статус заморозки', value: 'Доступен для менеджеров CRM' },
-    ],
-  },
-  {
-    icon: HardDrive,
-    title: 'Склад и ремонт',
-    items: [
-      { label: 'Резервирование товара', value: '72 часа для активных заказов' },
-      { label: 'Контроль серийных номеров', value: 'Включён для техники и аксессуаров' },
-      { label: 'Маршрут ремонта', value: 'Приём -> Диагностика -> Работа -> Выдача' },
-      { label: 'Списание запчастей', value: 'После перехода ремонта в финальную фазу' },
-    ],
-  },
-  {
-    icon: Database,
-    title: 'Продажи, финансы и безопасность',
-    items: [
-      { label: 'Окно черновика продажи', value: '24 часа' },
-      { label: 'Максимальная скидка', value: 'Зависит от роли пользователя' },
-      { label: 'Закрытие смены', value: 'Обязательно до 23:30' },
-      { label: 'Резервные копии', value: 'Хранение 14 дней' },
-    ],
-  },
-];
+  return fallback ?? t('userCard.noRole', { ns: 'app' });
+}
 
 export function SettingsPage() {
+  const { t } = useTranslation(['app', 'common']);
   const currentUser = useAuthStore((state) => state.user);
   const theme = useSystemPreferencesStore((state) => state.theme);
   const language = useSystemPreferencesStore((state) => state.language);
@@ -142,8 +72,248 @@ export function SettingsPage() {
     quickActions: true,
   });
 
-  const displayName = currentUser?.displayName || 'Пользователь';
-  const roleName = currentUser?.role.nameRu || 'Роль не назначена';
+  const languageOptions: Array<{ value: SystemLanguage; short: string; label: string; note: string }> = [
+    {
+      value: 'ru',
+      short: 'RU',
+      label: t('system.language.ru', { ns: 'app' }),
+      note: t('settings.appearance.languageNotes.ru', { ns: 'app' }),
+    },
+    {
+      value: 'ar',
+      short: 'AR',
+      label: t('system.language.ar', { ns: 'app' }),
+      note: t('settings.appearance.languageNotes.ar', { ns: 'app' }),
+    },
+  ];
+
+  const themeOptions: Array<{ value: SystemTheme; label: string; note: string; icon: typeof SunMedium }> = [
+    {
+      value: 'light',
+      label: t('system.theme.light', { ns: 'app' }),
+      note: t('settings.appearance.themeNotes.light', { ns: 'app' }),
+      icon: SunMedium,
+    },
+    {
+      value: 'night',
+      label: t('system.theme.night', { ns: 'app' }),
+      note: t('settings.appearance.themeNotes.night', { ns: 'app' }),
+      icon: MoonStar,
+    },
+    {
+      value: 'ice',
+      label: t('system.theme.ice', { ns: 'app' }),
+      note: t('settings.appearance.themeNotes.ice', { ns: 'app' }),
+      icon: Waves,
+    },
+    {
+      value: 'custom',
+      label: t('system.theme.custom', { ns: 'app' }),
+      note: t('settings.appearance.themeNotes.custom', { ns: 'app' }),
+      icon: Sparkles,
+    },
+  ];
+
+  const accentOptions: Array<{ value: SystemAccent; label: string; note: string; gradient: string }> = [
+    {
+      value: 'blue',
+      label: t('system.accent.blue', { ns: 'app' }),
+      note: t('settings.appearance.accentNotes.blue', { ns: 'app' }),
+      gradient: 'linear-gradient(135deg, #5db7ff, #1f7ae0)',
+    },
+    {
+      value: 'gold',
+      label: t('system.accent.gold', { ns: 'app' }),
+      note: t('settings.appearance.accentNotes.gold', { ns: 'app' }),
+      gradient: 'linear-gradient(135deg, #ffd86b, #c89212)',
+    },
+    {
+      value: 'red',
+      label: t('system.accent.red', { ns: 'app' }),
+      note: t('settings.appearance.accentNotes.red', { ns: 'app' }),
+      gradient: 'linear-gradient(135deg, #ff98a5, #d34b58)',
+    },
+    {
+      value: 'emerald',
+      label: t('system.accent.emerald', { ns: 'app' }),
+      note: t('settings.appearance.accentNotes.emerald', { ns: 'app' }),
+      gradient: 'linear-gradient(135deg, #63e0b7, #169d72)',
+    },
+    {
+      value: 'violet',
+      label: t('system.accent.violet', { ns: 'app' }),
+      note: t('settings.appearance.accentNotes.violet', { ns: 'app' }),
+      gradient: 'linear-gradient(135deg, #baa3ff, #7c5ce0)',
+    },
+  ];
+
+  const navigationCards = [
+    {
+      icon: UserRound,
+      title: t('settings.links.profile.title', { ns: 'app' }),
+      description: t('settings.links.profile.description', { ns: 'app' }),
+      to: '/settings/profile',
+    },
+    {
+      icon: CreditCard,
+      title: t('settings.links.payments.title', { ns: 'app' }),
+      description: t('settings.links.payments.description', { ns: 'app' }),
+      to: '/finance/payment-methods',
+    },
+    {
+      icon: Cog,
+      title: t('settings.links.accounts.title', { ns: 'app' }),
+      description: t('settings.links.accounts.description', { ns: 'app' }),
+      to: '/finance/accounts',
+    },
+  ];
+
+  const settingsDomainCards = [
+    {
+      icon: BellRing,
+      title: t('settings.domains.notifications.title', { ns: 'app' }),
+      items: [
+        {
+          label: t('settings.domains.notifications.items.threshold.label', { ns: 'app' }),
+          value: t('settings.domains.notifications.items.threshold.value', { ns: 'app' }),
+        },
+        {
+          label: t('settings.domains.notifications.items.alerts.label', { ns: 'app' }),
+          value: t('settings.domains.notifications.items.alerts.value', { ns: 'app' }),
+        },
+        {
+          label: t('settings.domains.notifications.items.ticker.label', { ns: 'app' }),
+          value: t('settings.domains.notifications.items.ticker.value', { ns: 'app' }),
+        },
+        {
+          label: t('settings.domains.notifications.items.tasks.label', { ns: 'app' }),
+          value: t('settings.domains.notifications.items.tasks.value', { ns: 'app' }),
+        },
+      ],
+    },
+    {
+      icon: UserRound,
+      title: t('settings.domains.crm.title', { ns: 'app' }),
+      items: [
+        {
+          label: t('settings.domains.crm.items.code.label', { ns: 'app' }),
+          value: t('settings.domains.crm.items.code.value', { ns: 'app' }),
+        },
+        {
+          label: t('settings.domains.crm.items.channels.label', { ns: 'app' }),
+          value: t('settings.domains.crm.items.channels.value', { ns: 'app' }),
+        },
+        {
+          label: t('settings.domains.crm.items.photos.label', { ns: 'app' }),
+          value: t('settings.domains.crm.items.photos.value', { ns: 'app' }),
+        },
+        {
+          label: t('settings.domains.crm.items.freeze.label', { ns: 'app' }),
+          value: t('settings.domains.crm.items.freeze.value', { ns: 'app' }),
+        },
+      ],
+    },
+    {
+      icon: HardDrive,
+      title: t('settings.domains.inventory.title', { ns: 'app' }),
+      items: [
+        {
+          label: t('settings.domains.inventory.items.reservation.label', { ns: 'app' }),
+          value: t('settings.domains.inventory.items.reservation.value', { ns: 'app' }),
+        },
+        {
+          label: t('settings.domains.inventory.items.serials.label', { ns: 'app' }),
+          value: t('settings.domains.inventory.items.serials.value', { ns: 'app' }),
+        },
+        {
+          label: t('settings.domains.inventory.items.repairFlow.label', { ns: 'app' }),
+          value: t('settings.domains.inventory.items.repairFlow.value', { ns: 'app' }),
+        },
+        {
+          label: t('settings.domains.inventory.items.partsWriteOff.label', { ns: 'app' }),
+          value: t('settings.domains.inventory.items.partsWriteOff.value', { ns: 'app' }),
+        },
+      ],
+    },
+    {
+      icon: Database,
+      title: t('settings.domains.operations.title', { ns: 'app' }),
+      items: [
+        {
+          label: t('settings.domains.operations.items.draftWindow.label', { ns: 'app' }),
+          value: t('settings.domains.operations.items.draftWindow.value', { ns: 'app' }),
+        },
+        {
+          label: t('settings.domains.operations.items.discount.label', { ns: 'app' }),
+          value: t('settings.domains.operations.items.discount.value', { ns: 'app' }),
+        },
+        {
+          label: t('settings.domains.operations.items.shiftClosing.label', { ns: 'app' }),
+          value: t('settings.domains.operations.items.shiftClosing.value', { ns: 'app' }),
+        },
+        {
+          label: t('settings.domains.operations.items.backups.label', { ns: 'app' }),
+          value: t('settings.domains.operations.items.backups.value', { ns: 'app' }),
+        },
+      ],
+    },
+  ];
+
+  const overviewStats = [
+    { label: t('settings.page.overview.policies', { ns: 'app' }), value: '28' },
+    { label: t('settings.page.overview.demoSets', { ns: 'app' }), value: '12' },
+    { label: t('settings.page.overview.modules', { ns: 'app' }), value: '12' },
+    { label: t('settings.page.overview.scenarios', { ns: 'app' }), value: '21' },
+  ];
+
+  const workspaceRows = [
+    {
+      key: 'compactSidebar' as const,
+      label: t('settings.workspace.compactSidebar.label', { ns: 'app' }),
+      note: t('settings.workspace.compactSidebar.note', { ns: 'app' }),
+    },
+    {
+      key: 'showTicker' as const,
+      label: t('settings.workspace.showTicker.label', { ns: 'app' }),
+      note: t('settings.workspace.showTicker.note', { ns: 'app' }),
+    },
+    {
+      key: 'autoRefresh' as const,
+      label: t('settings.workspace.autoRefresh.label', { ns: 'app' }),
+      note: t('settings.workspace.autoRefresh.note', { ns: 'app' }),
+    },
+    {
+      key: 'quickActions' as const,
+      label: t('settings.workspace.quickActions.label', { ns: 'app' }),
+      note: t('settings.workspace.quickActions.note', { ns: 'app' }),
+    },
+  ];
+
+  const demoCards = [
+    {
+      title: t('settings.demo.products.title', { ns: 'app' }),
+      value: t('settings.demo.products.value', { ns: 'app' }),
+      text: t('settings.demo.products.text', { ns: 'app' }),
+    },
+    {
+      title: t('settings.demo.finance.title', { ns: 'app' }),
+      value: t('settings.demo.finance.value', { ns: 'app' }),
+      text: t('settings.demo.finance.text', { ns: 'app' }),
+    },
+    {
+      title: t('settings.demo.orders.title', { ns: 'app' }),
+      value: t('settings.demo.orders.value', { ns: 'app' }),
+      text: t('settings.demo.orders.text', { ns: 'app' }),
+    },
+    {
+      title: t('settings.demo.customers.title', { ns: 'app' }),
+      value: t('settings.demo.customers.value', { ns: 'app' }),
+      text: t('settings.demo.customers.text', { ns: 'app' }),
+    },
+  ];
+
+  const displayName = currentUser?.displayName || t('user.current', { ns: 'common' });
+  const roleName = getRoleLabel(currentUser?.role.code, currentUser?.role.nameRu, t);
   const avatarSrc = currentUser?.avatarUrl || avatars.defaultUser;
   const initials = getInitials(displayName);
 
@@ -151,16 +321,6 @@ export function SettingsPage() {
   const currentTheme = themeOptions.find((option) => option.value === theme) ?? themeOptions[0];
   const currentAccent = accentOptions.find((option) => option.value === accent) ?? accentOptions[0];
   const CurrentThemeIcon = currentTheme.icon;
-
-  const overviewStats = useMemo(
-    () => [
-      { label: 'Активных системных политик', value: '28' },
-      { label: 'Готовых демо-наборов', value: '12' },
-      { label: 'Модулей с настройками', value: '12' },
-      { label: 'Проверочных сценариев', value: '21' },
-    ],
-    [],
-  );
 
   function toggleWorkspaceSetting(key: keyof typeof workspaceSettings) {
     setWorkspaceSettings((current) => ({
@@ -511,8 +671,8 @@ export function SettingsPage() {
 
       <header className="page-header">
         <div>
-          <p className="eyebrow">Настройки</p>
-          <h1>Центр системных настроек</h1>
+          <p className="eyebrow">{t('settings.eyebrow', { ns: 'app' })}</p>
+          <h1>{t('settings.title', { ns: 'app' })}</h1>
         </div>
       </header>
 
@@ -525,29 +685,26 @@ export function SettingsPage() {
             </div>
 
             <div className="settings-hero-copy">
-              <p className="eyebrow">Панель конфигурации</p>
+              <p className="eyebrow">{t('settings.page.heroEyebrow', { ns: 'app' })}</p>
               <h2>{displayName}</h2>
               <p>{roleName}</p>
-              <p>
-                Здесь собраны настройки внешнего вида, языковая среда, цветовые палитры и системные параметры,
-                которые помогают довести интерфейс до аккуратного и цельного состояния.
-              </p>
+              <p>{t('settings.page.heroText', { ns: 'app' })}</p>
               <div className="settings-hero-badges">
                 <span className="settings-hero-badge">
                   <Globe2 size={14} />
-                  Язык: {currentLanguage.label}
+                  {t('settings.page.badges.language', { ns: 'app', value: currentLanguage.label })}
                 </span>
                 <span className="settings-hero-badge">
                   <CurrentThemeIcon size={14} />
-                  Тема: {currentTheme.label}
+                  {t('settings.page.badges.theme', { ns: 'app', value: currentTheme.label })}
                 </span>
                 <span className="settings-hero-badge">
                   <Palette size={14} />
-                  Палитра: {currentAccent.label}
+                  {t('settings.page.badges.accent', { ns: 'app', value: currentAccent.label })}
                 </span>
                 <span className="settings-hero-badge">
                   <RefreshCw size={14} />
-                  Демо-режим наполнения активен
+                  {t('settings.page.badges.demoMode', { ns: 'app' })}
                 </span>
               </div>
             </div>
@@ -570,8 +727,8 @@ export function SettingsPage() {
                 <Sparkles size={22} />
               </span>
               <div>
-                <h3>Тема и языковая среда</h3>
-                <p>Тёмная тема теперь более спокойная, а пользовательская палитра подстраивает весь интерфейс под выбранный цвет.</p>
+                <h3>{t('settings.page.appearanceTitle', { ns: 'app' })}</h3>
+                <p>{t('settings.page.appearanceText', { ns: 'app' })}</p>
               </div>
             </div>
 
@@ -589,7 +746,7 @@ export function SettingsPage() {
                       <span className="settings-choice-short">
                         <Icon size={14} />
                       </span>
-                      {theme === option.value ? <span className="settings-choice-check">Активна</span> : null}
+                      {theme === option.value ? <span className="settings-choice-check">{t('settings.page.themeActive', { ns: 'app' })}</span> : null}
                     </div>
                     <strong>{option.label}</strong>
                     <small>{option.note}</small>
@@ -608,7 +765,7 @@ export function SettingsPage() {
                 >
                   <div className="settings-choice-top">
                     <span className="settings-choice-short">{option.short}</span>
-                    {language === option.value ? <span className="settings-choice-check">Выбран</span> : null}
+                    {language === option.value ? <span className="settings-choice-check">{t('settings.page.languageSelected', { ns: 'app' })}</span> : null}
                   </div>
                   <strong>{option.label}</strong>
                   <small>{option.note}</small>
@@ -623,8 +780,8 @@ export function SettingsPage() {
                 <Palette size={22} />
               </span>
               <div>
-                <h3>Пользовательская цветовая палитра</h3>
-                <p>Выберите основной цвет, и интерфейс подстроит кнопки, ссылки, карточки, фоновые свечения и вспомогательные акценты.</p>
+                <h3>{t('settings.page.accentTitle', { ns: 'app' })}</h3>
+                <p>{t('settings.page.accentText', { ns: 'app' })}</p>
               </div>
             </div>
 
@@ -654,78 +811,35 @@ export function SettingsPage() {
               <Wrench size={22} />
             </span>
             <div>
-              <h3>Операционные настройки рабочего места</h3>
-              <p>Локальные сценарии, которые удобно включать и отключать при развитии интерфейсов и внутренних модулей.</p>
+              <h3>{t('settings.page.workspaceTitle', { ns: 'app' })}</h3>
+              <p>{t('settings.page.workspaceText', { ns: 'app' })}</p>
             </div>
           </div>
 
           <div className="settings-workspace-list">
-            <div className="settings-workspace-row">
-              <label htmlFor="compactSidebar">
-                <input
-                  id="compactSidebar"
-                  type="checkbox"
-                  checked={workspaceSettings.compactSidebar}
-                  onChange={() => toggleWorkspaceSetting('compactSidebar')}
-                />
-                <span>
-                  <strong>Компактный режим боковой панели</strong>
-                  <span className="settings-workspace-note">Уменьшает визуальный вес навигации для плотных рабочих экранов.</span>
-                </span>
-              </label>
-            </div>
-
-            <div className="settings-workspace-row">
-              <label htmlFor="showTicker">
-                <input
-                  id="showTicker"
-                  type="checkbox"
-                  checked={workspaceSettings.showTicker}
-                  onChange={() => toggleWorkspaceSetting('showTicker')}
-                />
-                <span>
-                  <strong>Показывать тикер уведомлений</strong>
-                  <span className="settings-workspace-note">Полезно при отладке ленты событий и визуализации приоритетов.</span>
-                </span>
-              </label>
-            </div>
-
-            <div className="settings-workspace-row">
-              <label htmlFor="autoRefresh">
-                <input
-                  id="autoRefresh"
-                  type="checkbox"
-                  checked={workspaceSettings.autoRefresh}
-                  onChange={() => toggleWorkspaceSetting('autoRefresh')}
-                />
-                <span>
-                  <strong>Автообновление карточек данных</strong>
-                  <span className="settings-workspace-note">Удобно для дашбордов, очередей, склада и оперативных продаж.</span>
-                </span>
-              </label>
-            </div>
-
-            <div className="settings-workspace-row">
-              <label htmlFor="quickActions">
-                <input
-                  id="quickActions"
-                  type="checkbox"
-                  checked={workspaceSettings.quickActions}
-                  onChange={() => toggleWorkspaceSetting('quickActions')}
-                />
-                <span>
-                  <strong>Быстрые действия на ключевых страницах</strong>
-                  <span className="settings-workspace-note">Подходит для CRM, ремонта, склада, POS и финансовых карточек.</span>
-                </span>
-              </label>
-            </div>
+            {workspaceRows.map((row) => (
+              <div className="settings-workspace-row" key={row.key}>
+                <label htmlFor={row.key}>
+                  <input
+                    id={row.key}
+                    type="checkbox"
+                    checked={workspaceSettings[row.key]}
+                    onChange={() => toggleWorkspaceSetting(row.key)}
+                  />
+                  <span>
+                    <strong>{row.label}</strong>
+                    <span className="settings-workspace-note">{row.note}</span>
+                  </span>
+                </label>
+              </div>
+            ))}
           </div>
         </section>
 
         <section className="settings-section-title">
           <div>
-            <h2>Настройки модулей и демонстрационные политики</h2>
-            <p>Блоки ниже помогают развивать интерфейс даже там, где рабочая бизнес-логика ещё только расширяется.</p>
+            <h2>{t('settings.page.modulesTitle', { ns: 'app' })}</h2>
+            <p>{t('settings.page.modulesText', { ns: 'app' })}</p>
           </div>
         </section>
 
@@ -762,39 +876,26 @@ export function SettingsPage() {
               <ShieldCheck size={22} />
             </span>
             <div>
-              <h3>Пакеты демо-данных для развития системы</h3>
-              <p>Добавлены небольшие тестовые наборы, чтобы можно было развивать витрины, детали, таблицы и карточки без ожидания реальных операций.</p>
+              <h3>{t('settings.page.demoTitle', { ns: 'app' })}</h3>
+              <p>{t('settings.page.demoText', { ns: 'app' })}</p>
             </div>
           </div>
 
           <div className="settings-domain-grid">
-            <div className="settings-overview-card">
-              <span>Товары</span>
-              <strong>6 позиций</strong>
-              <span>Аксессуары, кабели и комплектующие с ценами, штрихкодами и остатками.</span>
-            </div>
-            <div className="settings-overview-card">
-              <span>Финансовые документы</span>
-              <strong>3 счета</strong>
-              <span>Небольшой набор draft/approved/voided для теста списков и деталей.</span>
-            </div>
-            <div className="settings-overview-card">
-              <span>Заказы</span>
-              <strong>2 ремонта</strong>
-              <span>Пара тестовых заказов с устройствами, статусами и заметками для отладки UI.</span>
-            </div>
-            <div className="settings-overview-card">
-              <span>Клиенты</span>
-              <strong>Не изменяются</strong>
-              <span>Для демо-сценариев используются уже существующие активные клиенты из базы.</span>
-            </div>
+            {demoCards.map((card) => (
+              <div className="settings-overview-card" key={card.title}>
+                <span>{card.title}</span>
+                <strong>{card.value}</strong>
+                <span>{card.text}</span>
+              </div>
+            ))}
           </div>
         </section>
 
         <section className="settings-section-title">
           <div>
-            <h2>Быстрые переходы</h2>
-            <p>Ключевые страницы настроек и связанные рабочие разделы системы.</p>
+            <h2>{t('settings.page.quickLinksTitle', { ns: 'app' })}</h2>
+            <p>{t('settings.page.quickLinksText', { ns: 'app' })}</p>
           </div>
         </section>
 
@@ -817,8 +918,8 @@ export function SettingsPage() {
               <span className="settings-card-icon" aria-hidden="true">
                 <ShieldCheck size={22} />
               </span>
-              <h3>Управление пользователями</h3>
-              <p>Отдельный раздел для пользователей, ролей и прав доступа без смешивания с личным профилем.</p>
+              <h3>{t('settings.links.users.title', { ns: 'app' })}</h3>
+              <p>{t('settings.links.users.description', { ns: 'app' })}</p>
             </Link>
           </PermissionGate>
         </section>

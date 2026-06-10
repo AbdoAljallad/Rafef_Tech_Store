@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Mail, MapPin, Phone, Snowflake, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { crmApi } from '../../modules/crm/api/crm.api';
 import { CustomerForm } from '../../modules/crm/components/CustomerForm';
@@ -43,45 +44,9 @@ function getCustomerInitials(name: string) {
   return parts.map((part) => part[0]?.toUpperCase() ?? '').join('').slice(0, 2);
 }
 
-function getCustomerTypeLabel(type: Customer['customer_type']) {
-  return type === 'business' ? 'Компания' : 'Частный клиент';
-}
-
-function getContactTypeLabel(type: string) {
-  switch (type) {
-    case 'phone':
-      return 'Телефон';
-    case 'email':
-      return 'Email';
-    case 'whatsapp':
-      return 'WhatsApp';
-    case 'telegram':
-      return 'Telegram';
-    default:
-      return 'Другое';
-  }
-}
-
-function getLocationTypeLabel(type: string) {
-  switch (type) {
-    case 'home':
-      return 'Дом';
-    case 'school':
-      return 'Школа';
-    case 'company':
-      return 'Компания';
-    case 'store':
-      return 'Магазин';
-    case 'factory':
-      return 'Фабрика';
-    case 'hospital':
-      return 'Больница';
-    default:
-      return 'Другое';
-  }
-}
-
 export function CustomerDetailPage() {
+  const { t, i18n } = useTranslation(['app', 'common']);
+  const locale = i18n.resolvedLanguage === 'ar' ? 'ar-EG' : 'ru-RU';
   const { id } = useParams();
   const customerId = Number(id);
   const [drawer, setDrawer] = useState<DrawerMode>(null);
@@ -158,6 +123,10 @@ export function CustomerDetailPage() {
 
   const customer = customerQuery.data;
   const customerInitials = customer ? getCustomerInitials(customer.name) : 'RT';
+
+  const customerTypeLabel = (type: Customer['customer_type']) => (type === 'business' ? t('customers.business', { ns: 'app' }) : t('customers.individual', { ns: 'app' }));
+  const contactTypeLabel = (type: string) => t(`customers.form.contactTypes.${['phone', 'email', 'whatsapp', 'telegram'].includes(type) ? type : 'other'}`, { ns: 'app' });
+  const locationTypeLabel = (type: string) => t(`customers.locationTypes.${['home', 'school', 'company', 'store', 'factory', 'hospital'].includes(type) ? type : 'other'}`, { ns: 'app' });
 
   return (
     <>
@@ -424,19 +393,19 @@ export function CustomerDetailPage() {
       <div className="customer-detail-topbar">
         <header className="page-header" style={{ marginBottom: 0 }}>
           <div>
-            <p className="eyebrow">CRM</p>
-            <h1>{customer?.name ?? 'Клиент'}</h1>
+            <p className="eyebrow">{t('customers.module', { ns: 'app' })}</p>
+            <h1>{customer?.name ?? t('customers.detail.fallbackName', { ns: 'app' })}</h1>
           </div>
         </header>
 
-        <Link className="customer-back-link" to="/customers" aria-label="Вернуться к списку клиентов">
+        <Link className="customer-back-link" to="/customers" aria-label={t('customers.detail.backToList', { ns: 'app' })}>
           <ArrowLeft size={18} aria-hidden="true" />
-          <span>К списку клиентов</span>
+          <span>{t('customers.detail.backToList', { ns: 'app' })}</span>
         </Link>
       </div>
 
-      {customerQuery.isLoading ? <section className="panel">Загрузка клиента...</section> : null}
-      {customerQuery.isError ? <section className="panel">Не удалось загрузить карточку клиента.</section> : null}
+      {customerQuery.isLoading ? <section className="panel">{t('customers.detail.loading', { ns: 'app' })}</section> : null}
+      {customerQuery.isError ? <section className="panel">{t('customers.detail.error', { ns: 'app' })}</section> : null}
 
       {customer ? (
         <section className="customer-detail-shell">
@@ -447,97 +416,97 @@ export function CustomerDetailPage() {
             </div>
 
             <div className="customer-profile-copy">
-              <p className="eyebrow">КАРТОЧКА КЛИЕНТА</p>
+              <p className="eyebrow">{t('customers.detail.cardEyebrow', { ns: 'app' })}</p>
               <div className="customer-profile-name">
                 <strong>{customer.name}</strong>
                 <span className="customer-profile-subtitle">
-                  {getCustomerTypeLabel(customer.customer_type)} · Код {customer.customer_code}
+                  {customerTypeLabel(customer.customer_type)} · {t('customers.code', { ns: 'app' })} {customer.customer_code}
                 </span>
               </div>
 
               <div className="customer-profile-tags">
-                <span className="customer-meta-pill">{getCustomerTypeLabel(customer.customer_type)}</span>
-                <span className="customer-meta-pill">{customer.is_frozen ? 'Заморожен' : 'Активен'}</span>
+                <span className="customer-meta-pill">{customerTypeLabel(customer.customer_type)}</span>
+                <span className="customer-meta-pill">{customer.is_frozen ? t('customers.frozen', { ns: 'app' }) : t('customers.detail.active', { ns: 'app' })}</span>
                 {customer.phone_primary ? <span className="customer-meta-pill">{customer.phone_primary}</span> : null}
               </div>
 
-              <p className="customer-profile-note">{customer.notes || 'Фотография пока не добавлена, поэтому используется стилизованный аватар с инициалами клиента.'}</p>
+              <p className="customer-profile-note">{customer.notes || t('customers.detail.avatarFallbackNote', { ns: 'app' })}</p>
             </div>
 
             <div className="customer-profile-cta">
               <span className="customer-profile-cta-label">
                 <Snowflake size={14} aria-hidden="true" />
-                <span>{customer.is_frozen ? 'Учётная запись заморожена' : 'Учётная запись активна'}</span>
+                <span>{customer.is_frozen ? t('customers.detail.accountFrozen', { ns: 'app' }) : t('customers.detail.accountActive', { ns: 'app' })}</span>
               </span>
             </div>
           </article>
 
           <section className="customer-actions-grid">
             <PermissionGate permission="crm.customers.update">
-              <Button onClick={() => setDrawer('edit')}>Редактировать</Button>
+              <Button onClick={() => setDrawer('edit')}>{t('customers.detail.edit', { ns: 'app' })}</Button>
               <Button
                 variant="secondary"
                 onClick={() => toggleFreezeMutation.mutate(!Boolean(customer.is_frozen))}
                 isLoading={toggleFreezeMutation.isPending}
               >
-                {customer.is_frozen ? 'Снять заморозку' : 'Заморозить'}
+                {customer.is_frozen ? t('customers.detail.unfreeze', { ns: 'app' }) : t('customers.detail.freeze', { ns: 'app' })}
               </Button>
               <Button variant="secondary" onClick={() => setDrawer('contact')}>
-                Добавить контакт
+                {t('customers.detail.addContact', { ns: 'app' })}
               </Button>
               <Button variant="secondary" onClick={() => setDrawer('location')}>
-                Добавить адрес
+                {t('customers.detail.addLocation', { ns: 'app' })}
               </Button>
             </PermissionGate>
             <PermissionGate permission="crm.customers.notes.manage">
               <Button variant="secondary" onClick={() => setDrawer('note')}>
-                Добавить заметку
+                {t('customers.detail.addNote', { ns: 'app' })}
               </Button>
             </PermissionGate>
             <PermissionGate permission="crm.customers.update">
               <Button variant="danger" onClick={() => setIsDeleteOpen(true)}>
                 <Trash2 size={16} aria-hidden="true" />
-                <span>Удалить клиента</span>
+                <span>{t('customers.detail.delete', { ns: 'app' })}</span>
               </Button>
             </PermissionGate>
           </section>
 
           <section className="customer-info-grid">
             <article className="customer-info-card">
-              <h3>Основная информация</h3>
+              <h3>{t('customers.detail.overview', { ns: 'app' })}</h3>
               <p>
-                <strong>Телефон:</strong> {customer.phone_primary || '-'}
+                <strong>{t('customers.phone', { ns: 'app' })}:</strong> {customer.phone_primary || '-'}
               </p>
               <p>
-                <strong>Доп. телефон:</strong> {customer.phone_secondary || '-'}
+                <strong>{t('customers.detail.secondaryPhone', { ns: 'app' })}:</strong> {customer.phone_secondary || '-'}
               </p>
               <p>
-                <strong>Email:</strong> {customer.email || '-'}
+                <strong>{t('customers.email', { ns: 'app' })}:</strong> {customer.email || '-'}
               </p>
               <p>
-                <strong>Создан:</strong> {new Date(customer.created_at).toLocaleString('ru-RU')}
+                <strong>{t('customers.detail.createdAt', { ns: 'app' })}:</strong> {new Date(customer.created_at).toLocaleString(locale)}
               </p>
               <p>
-                <strong>Обновлён:</strong> {new Date(customer.updated_at).toLocaleString('ru-RU')}
+                <strong>{t('customers.detail.updatedAt', { ns: 'app' })}:</strong> {new Date(customer.updated_at).toLocaleString(locale)}
               </p>
             </article>
 
             <article className="customer-info-card">
-              <h3>Способы связи</h3>
+              <h3>{t('customers.detail.contacts', { ns: 'app' })}</h3>
               <div className="customer-inline-list">
                 {customer.contacts.length > 0 ? (
                   customer.contacts.map((contact) => (
                     <div className="customer-inline-item" key={contact.id}>
                       {contact.contact_type === 'email' ? <Mail size={18} aria-hidden="true" /> : <Phone size={18} aria-hidden="true" />}
                       <div>
-                        <strong>{getContactTypeLabel(contact.contact_type)}</strong>
+                        <strong>{contactTypeLabel(contact.contact_type)}</strong>
                         <div>{contact.contact_value}</div>
-                        {contact.is_primary ? <small>Основной контакт</small> : null}
+                        {contact.is_primary ? <small>{t('customers.detail.primaryContact', { ns: 'app' })}</small> : null}
                       </div>
                     </div>
                   ))
                 ) : (
-                  <p>Способы связи пока не добавлены.</p>
+                  <p>{t('customers.detail.contactsEmpty', { ns: 'app' })}</p>
                 )}
               </div>
             </article>
@@ -545,7 +514,7 @@ export function CustomerDetailPage() {
 
           <section className="customer-info-grid">
             <article className="customer-list-card">
-              <h3>Адреса и точки</h3>
+              <h3>{t('customers.detail.locations', { ns: 'app' })}</h3>
               <div className="customer-inline-list">
                 {customer.locations.length > 0 ? (
                   customer.locations.map((location) => (
@@ -553,31 +522,31 @@ export function CustomerDetailPage() {
                       <MapPin size={18} aria-hidden="true" />
                       <div>
                         <strong>{location.name}</strong>
-                        <div>{location.address_text || 'Адрес не указан'}</div>
-                        <small>{getLocationTypeLabel(location.location_type)}</small>
+                        <div>{location.address_text || t('customers.detail.addressMissing', { ns: 'app' })}</div>
+                        <small>{locationTypeLabel(location.location_type)}</small>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <p>Адреса пока не добавлены.</p>
+                  <p>{t('customers.detail.locationsEmpty', { ns: 'app' })}</p>
                 )}
               </div>
             </article>
 
             <article className="customer-list-card">
-              <h3>История заметок</h3>
+              <h3>{t('customers.detail.notesHistory', { ns: 'app' })}</h3>
               <div className="customer-inline-list">
                 {customer.notesHistory.length > 0 ? (
                   customer.notesHistory.map((note) => (
                     <div className="customer-inline-item" key={note.id}>
                       <div>
                         <div>{note.note_text}</div>
-                        <div className="customer-note-time">{new Date(note.created_at).toLocaleString('ru-RU')}</div>
+                        <div className="customer-note-time">{new Date(note.created_at).toLocaleString(locale)}</div>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <p>История заметок пока пуста.</p>
+                  <p>{t('customers.detail.notesEmpty', { ns: 'app' })}</p>
                 )}
               </div>
             </article>
@@ -585,28 +554,28 @@ export function CustomerDetailPage() {
         </section>
       ) : null}
 
-      <FormDrawer title="Редактировать клиента" isOpen={drawer === 'edit'} onClose={() => setDrawer(null)}>
+      <FormDrawer title={t('customers.detail.editTitle', { ns: 'app' })} isOpen={drawer === 'edit'} onClose={() => setDrawer(null)}>
         {customer ? <CustomerForm customer={customer} onSubmit={(values) => updateMutation.mutateAsync(values)} isSubmitting={updateMutation.isPending} /> : null}
       </FormDrawer>
 
-      <FormDrawer title="Новый контакт" isOpen={drawer === 'contact'} onClose={() => setDrawer(null)}>
+      <FormDrawer title={t('customers.detail.newContactTitle', { ns: 'app' })} isOpen={drawer === 'contact'} onClose={() => setDrawer(null)}>
         <ContactForm onSubmit={(values) => contactMutation.mutateAsync(values)} isSubmitting={contactMutation.isPending} />
       </FormDrawer>
 
-      <FormDrawer title="Новый адрес" isOpen={drawer === 'location'} onClose={() => setDrawer(null)}>
+      <FormDrawer title={t('customers.detail.newLocationTitle', { ns: 'app' })} isOpen={drawer === 'location'} onClose={() => setDrawer(null)}>
         <LocationForm onSubmit={(values) => locationMutation.mutateAsync(values)} isSubmitting={locationMutation.isPending} />
       </FormDrawer>
 
-      <FormDrawer title="Новая заметка" isOpen={drawer === 'note'} onClose={() => setDrawer(null)}>
+      <FormDrawer title={t('customers.detail.newNoteTitle', { ns: 'app' })} isOpen={drawer === 'note'} onClose={() => setDrawer(null)}>
         <NoteForm onSubmit={(values) => noteMutation.mutateAsync(values)} isSubmitting={noteMutation.isPending} />
       </FormDrawer>
 
       <ConfirmDialog
-        title="Удалить клиента"
-        message={`Удалить клиента ${customer?.name ?? ''}? Клиент будет скрыт из активного списка.`}
+        title={t('customers.detail.deleteTitle', { ns: 'app' })}
+        message={t('customers.detail.deleteMessage', { ns: 'app', name: customer?.name ?? '' })}
         isOpen={isDeleteOpen}
-        confirmLabel="Удалить"
-        cancelLabel="Отмена"
+        confirmLabel={t('customers.detail.delete', { ns: 'app' })}
+        cancelLabel={t('common:actions.cancel')}
         onCancel={() => setIsDeleteOpen(false)}
         onConfirm={() => deleteMutation.mutate()}
       />
@@ -615,6 +584,7 @@ export function CustomerDetailPage() {
 }
 
 function ContactForm({ onSubmit, isSubmitting }: { onSubmit: (values: ContactFormValues) => Promise<unknown>; isSubmitting: boolean }) {
+  const { t } = useTranslation(['app', 'common']);
   const form = useForm<ContactFormValues>({
     resolver: zodResolver(contactFormSchema),
     defaultValues: { contactType: 'phone', contactValue: '', isPrimary: false },
@@ -622,23 +592,24 @@ function ContactForm({ onSubmit, isSubmitting }: { onSubmit: (values: ContactFor
 
   return (
     <form className="entity-form" onSubmit={form.handleSubmit((values) => onSubmit(values))}>
-      <Select label="Тип" {...form.register('contactType')}>
-        <option value="phone">Телефон</option>
-        <option value="email">Email</option>
-        <option value="whatsapp">WhatsApp</option>
-        <option value="telegram">Telegram</option>
-        <option value="other">Другое</option>
+      <Select label={t('customers.form.contactTypeLabel', { ns: 'app' })} {...form.register('contactType')}>
+        <option value="phone">{t('customers.form.contactTypes.phone', { ns: 'app' })}</option>
+        <option value="email">{t('customers.form.contactTypes.email', { ns: 'app' })}</option>
+        <option value="whatsapp">{t('customers.form.contactTypes.whatsapp', { ns: 'app' })}</option>
+        <option value="telegram">{t('customers.form.contactTypes.telegram', { ns: 'app' })}</option>
+        <option value="other">{t('customers.form.contactTypes.other', { ns: 'app' })}</option>
       </Select>
-      <Input label="Значение" error={form.formState.errors.contactValue?.message} {...form.register('contactValue')} />
-      <Checkbox label="Основной" {...form.register('isPrimary')} />
+      <Input label={t('customers.form.contactValueLabel', { ns: 'app' })} error={form.formState.errors.contactValue?.message} {...form.register('contactValue')} />
+      <Checkbox label={t('customers.form.primaryContact', { ns: 'app' })} {...form.register('isPrimary')} />
       <Button type="submit" isLoading={isSubmitting}>
-        Сохранить
+        {t('common:actions.save')}
       </Button>
     </form>
   );
 }
 
 function LocationForm({ onSubmit, isSubmitting }: { onSubmit: (values: LocationFormValues) => Promise<unknown>; isSubmitting: boolean }) {
+  const { t } = useTranslation(['app', 'common']);
   const form = useForm<LocationFormValues>({
     resolver: zodResolver(locationFormSchema) as unknown as Resolver<LocationFormValues>,
     defaultValues: { name: '', locationType: 'other', addressText: '', mapUrl: '', notes: '' },
@@ -646,34 +617,35 @@ function LocationForm({ onSubmit, isSubmitting }: { onSubmit: (values: LocationF
 
   return (
     <form className="entity-form" onSubmit={form.handleSubmit((values) => onSubmit(values))}>
-      <Input label="Название" error={form.formState.errors.name?.message} {...form.register('name')} />
-      <Select label="Тип" {...form.register('locationType')}>
-        <option value="home">Дом</option>
-        <option value="school">Школа</option>
-        <option value="company">Компания</option>
-        <option value="store">Магазин</option>
-        <option value="factory">Фабрика</option>
-        <option value="hospital">Больница</option>
-        <option value="other">Другое</option>
+      <Input label={t('customers.detail.locationName', { ns: 'app' })} error={form.formState.errors.name?.message} {...form.register('name')} />
+      <Select label={t('customers.form.typeLabel', { ns: 'app' })} {...form.register('locationType')}>
+        <option value="home">{t('customers.locationTypes.home', { ns: 'app' })}</option>
+        <option value="school">{t('customers.locationTypes.school', { ns: 'app' })}</option>
+        <option value="company">{t('customers.locationTypes.company', { ns: 'app' })}</option>
+        <option value="store">{t('customers.locationTypes.store', { ns: 'app' })}</option>
+        <option value="factory">{t('customers.locationTypes.factory', { ns: 'app' })}</option>
+        <option value="hospital">{t('customers.locationTypes.hospital', { ns: 'app' })}</option>
+        <option value="other">{t('customers.locationTypes.other', { ns: 'app' })}</option>
       </Select>
-      <Textarea label="Адрес" {...form.register('addressText')} />
-      <Input label="Ссылка на карту" {...form.register('mapUrl')} />
-      <Textarea label="Заметки" {...form.register('notes')} />
+      <Textarea label={t('customers.detail.addressLabel', { ns: 'app' })} {...form.register('addressText')} />
+      <Input label={t('customers.detail.mapUrl', { ns: 'app' })} {...form.register('mapUrl')} />
+      <Textarea label={t('customers.notes', { ns: 'app' })} {...form.register('notes')} />
       <Button type="submit" isLoading={isSubmitting}>
-        Сохранить
+        {t('common:actions.save')}
       </Button>
     </form>
   );
 }
 
 function NoteForm({ onSubmit, isSubmitting }: { onSubmit: (values: NoteFormValues) => Promise<unknown>; isSubmitting: boolean }) {
+  const { t } = useTranslation(['app', 'common']);
   const form = useForm<NoteFormValues>({ resolver: zodResolver(noteFormSchema), defaultValues: { noteText: '' } });
 
   return (
     <form className="entity-form" onSubmit={form.handleSubmit((values) => onSubmit(values))}>
-      <Textarea label="Заметка" error={form.formState.errors.noteText?.message} {...form.register('noteText')} />
+      <Textarea label={t('customers.notes', { ns: 'app' })} error={form.formState.errors.noteText?.message} {...form.register('noteText')} />
       <Button type="submit" isLoading={isSubmitting}>
-        Сохранить
+        {t('common:actions.save')}
       </Button>
     </form>
   );

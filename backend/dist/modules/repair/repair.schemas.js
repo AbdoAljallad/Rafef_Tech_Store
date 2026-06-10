@@ -27,12 +27,30 @@ export const deviceSchema = z.object({
     imei: optionalText,
     notes: optionalText,
 });
+const orderDeviceSchema = z.object({
+    categoryId: id,
+    brandId: id.optional().nullable(),
+    modelId: id.optional().nullable(),
+    deviceName: text,
+    serialNo: optionalText,
+    imei: optionalText,
+    notes: optionalText,
+});
 export const orderSchema = z.object({
     customerId: id,
-    deviceId: id,
+    deviceId: id.optional().nullable(),
+    newDevice: orderDeviceSchema.optional().nullable(),
     problemDescription: text,
     intakeNotes: optionalText,
     assignedUserId: id.optional().nullable(),
+}).superRefine((value, ctx) => {
+    if (!value.deviceId && !value.newDevice) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Device is required',
+            path: ['deviceId'],
+        });
+    }
 });
 export const orderServiceSchema = z.object({
     serviceId: id.optional().nullable(),
@@ -41,5 +59,13 @@ export const orderServiceSchema = z.object({
     unitPrice: money.optional(),
 });
 export const orderPartSchema = z.object({ productId: id, quantity: qty });
+export const orderServiceUpdateSchema = z.object({
+    serviceName: text,
+    quantity: qty,
+    unitPrice: money,
+});
+export const orderPartUpdateSchema = z.object({
+    quantity: qty,
+});
 export const statusChangeSchema = z.object({ status: repairStatusSchema, note: optionalText });
 export const noteSchema = z.object({ noteText: text });

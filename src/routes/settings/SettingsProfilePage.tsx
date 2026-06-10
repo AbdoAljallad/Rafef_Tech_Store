@@ -1,6 +1,7 @@
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Clock3, ImageMinus, ImagePlus, KeyRound, Save, ShieldCheck } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { ArrowLeft, Clock3, ImageMinus, ImagePlus, Save, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { authApi } from '../../modules/auth/api/auth.api';
 import { useAuthStore } from '../../modules/auth/stores/authStore';
@@ -18,6 +19,17 @@ type ProfileForm = {
   newPassword: string;
 };
 
+const activityLabelKeys: Record<string, string> = {
+  'auth.login': 'settings.profile.activityLabels.authLogin',
+  'auth.logout': 'settings.profile.activityLabels.authLogout',
+  'auth.profile.update': 'settings.profile.activityLabels.authProfileUpdate',
+  'auth.user.create': 'settings.profile.activityLabels.authUserCreate',
+  'auth.user.update': 'settings.profile.activityLabels.authUserUpdate',
+  'auth.user.delete': 'settings.profile.activityLabels.authUserDelete',
+  'auth.user.permissions.update': 'settings.profile.activityLabels.authUserPermissionsUpdate',
+  'auth.user.permissions.reset': 'settings.profile.activityLabels.authUserPermissionsReset',
+};
+
 function getInitials(name: string) {
   const parts = name
     .trim()
@@ -32,39 +44,45 @@ function getInitials(name: string) {
   return parts.map((part) => part[0]?.toUpperCase() ?? '').join('').slice(0, 2);
 }
 
-function formatDate(value: string | null | undefined) {
+function formatDate(
+  value: string | null | undefined,
+  locale: string,
+  t: (key: string, options?: Record<string, unknown>) => string,
+) {
   if (!value) {
-    return 'Нет данных';
+    return t('empty', { ns: 'common' });
   }
 
-  return new Date(value).toLocaleString('ru-RU');
+  return new Date(value).toLocaleString(locale);
 }
 
-function formatActivity(actionCode: string) {
-  const labels: Record<string, string> = {
-    'auth.login': 'Вход в систему',
-    'auth.logout': 'Выход из системы',
-    'auth.profile.update': 'Обновление своего профиля',
-    'auth.user.create': 'Создание пользователя',
-    'auth.user.update': 'Изменение пользователя',
-    'auth.user.delete': 'Отключение пользователя',
-    'auth.user.permissions.update': 'Изменение прав доступа',
-    'auth.user.permissions.reset': 'Сброс прав роли',
-  };
+function formatActivity(actionCode: string, t: (key: string, options?: Record<string, unknown>) => string) {
+  const labelKey = activityLabelKeys[actionCode];
+  if (!labelKey) {
+    return actionCode;
+  }
 
-  return labels[actionCode] || actionCode;
+  return t(labelKey, { ns: 'app' });
 }
 
-function formatStatus(status: SelfProfile['status']) {
-  if (status === 'active') {
-    return 'Активен';
+function formatStatus(status: SelfProfile['status'], t: (key: string, options?: Record<string, unknown>) => string) {
+  return t(`settings.profile.status.${status}`, { ns: 'app' });
+}
+
+function getRoleLabel(
+  code: string | undefined,
+  fallback: string | undefined,
+  t: (key: string, options?: Record<string, unknown>) => string,
+) {
+  if (code) {
+    return t(`settings.roles.${code}`, { ns: 'app', defaultValue: fallback ?? t('userCard.noRole', { ns: 'app' }) });
   }
 
-  if (status === 'locked') {
-    return 'Заблокирован';
-  }
+  return fallback ?? t('userCard.noRole', { ns: 'app' });
+}
 
-  return 'Отключён';
+function getModuleLabel(module: string, t: (key: string, options?: Record<string, unknown>) => string) {
+  return t(`settings.modules.${module}`, { ns: 'app', defaultValue: module });
 }
 
 function readFileAsDataUrl(file: File) {
@@ -77,6 +95,8 @@ function readFileAsDataUrl(file: File) {
 }
 
 export function SettingsProfilePage() {
+  const { t, i18n } = useTranslation(['app', 'common']);
+  const locale = i18n.language === 'ar' ? 'ar' : 'ru-RU';
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [form, setForm] = useState<ProfileForm>({
     username: '',
@@ -113,7 +133,7 @@ export function SettingsProfilePage() {
 
   const updateProfile = useMutation({
     mutationFn: authApi.updateProfile,
-    onSuccess: (response) => {
+    onSuccess: async (response) => {
       const profile = response.profile;
       useAuthStore.setState((state) => ({
         ...state,
@@ -130,36 +150,36 @@ export function SettingsProfilePage() {
         },
         permissions: new Set(profile.permissions),
       }));
-      void profileQuery.refetch();
+      await profileQuery.refetch();
       setForm((current) => ({
         ...current,
         currentPassword: '',
         newPassword: '',
       }));
       setFormError(null);
-      setSuccessMessage('Профиль успешно обновлён.');
+      setSuccessMessage(t('settings.profile.success', { ns: 'app' }));
     },
     onError: (error) => {
       if (isApiError(error)) {
         if (error.code === 'USERNAME_ALREADY_EXISTS') {
-          setFormError('Пользователь с таким логином уже существует.');
+          setFormError(t('settings.profile.errors.usernameExists', { ns: 'app' }));
           return;
         }
         if (error.code === 'CURRENT_PASSWORD_REQUIRED') {
-          setFormError('Для смены пароля укажите текущий пароль.');
+          setFormError(t('settings.profile.errors.currentPasswordRequired', { ns: 'app' }));
           return;
         }
         if (error.code === 'CURRENT_PASSWORD_INVALID') {
-          setFormError('Текущий пароль указан неверно.');
+          setFormError(t('settings.profile.errors.currentPasswordInvalid', { ns: 'app' }));
           return;
         }
         if (error.code === 'INVALID_IMAGE') {
-          setFormError('Загрузите корректное изображение профиля.');
+          setFormError(t('settings.profile.errors.invalidImage', { ns: 'app' }));
           return;
         }
       }
 
-      setFormError('Не удалось обновить профиль. Проверьте введённые данные.');
+      setFormError(t('settings.profile.errors.updateFailed', { ns: 'app' }));
     },
   });
 
@@ -174,13 +194,13 @@ export function SettingsProfilePage() {
     }
 
     if (!file.type.startsWith('image/')) {
-      setFormError('Можно загружать только изображения.');
+      setFormError(t('settings.profile.errors.onlyImages', { ns: 'app' }));
       event.target.value = '';
       return;
     }
 
     if (file.size > 4 * 1024 * 1024) {
-      setFormError('Размер изображения не должен превышать 4 МБ.');
+      setFormError(t('settings.profile.errors.imageTooLarge', { ns: 'app' }));
       event.target.value = '';
       return;
     }
@@ -191,7 +211,7 @@ export function SettingsProfilePage() {
       setFormError(null);
       setSuccessMessage(null);
     } catch {
-      setFormError('Не удалось прочитать выбранное изображение.');
+      setFormError(t('settings.profile.errors.fileReadFailed', { ns: 'app' }));
     } finally {
       event.target.value = '';
     }
@@ -202,12 +222,12 @@ export function SettingsProfilePage() {
     setSuccessMessage(null);
 
     if (!form.username.trim() || !form.displayName.trim()) {
-      setFormError('Логин и отображаемое имя обязательны.');
+      setFormError(t('settings.profile.errors.required', { ns: 'app' }));
       return;
     }
 
     if (form.newPassword && form.newPassword.length < 8) {
-      setFormError('Новый пароль должен содержать минимум 8 символов.');
+      setFormError(t('settings.profile.errors.newPasswordMin', { ns: 'app' }));
       return;
     }
 
@@ -469,17 +489,17 @@ export function SettingsProfilePage() {
 
       <header className="page-header settings-profile-header">
         <div>
-          <p className="eyebrow">Настройки</p>
-          <h1>Мой профиль</h1>
+          <p className="eyebrow">{t('settings.eyebrow', { ns: 'app' })}</p>
+          <h1>{t('settings.profile.title', { ns: 'app' })}</h1>
         </div>
         <Link className="ui-button secondary settings-return-link" to="/settings">
           <ArrowLeft size={16} />
-          <span>К настройкам</span>
+          <span>{t('settings.back', { ns: 'app' })}</span>
         </Link>
       </header>
 
-      {profileQuery.isLoading ? <section className="panel">Загрузка профиля...</section> : null}
-      {profileQuery.isError ? <section className="panel">Не удалось загрузить данные профиля.</section> : null}
+      {profileQuery.isLoading ? <section className="panel">{t('settings.profile.loading', { ns: 'app' })}</section> : null}
+      {profileQuery.isError ? <section className="panel">{t('settings.profile.error', { ns: 'app' })}</section> : null}
 
       {profile ? (
         <section className="settings-profile-shell">
@@ -493,18 +513,18 @@ export function SettingsProfilePage() {
                   </div>
 
                   <div className="settings-profile-copy">
-                    <p className="eyebrow">Ваш аккаунт</p>
+                    <p className="eyebrow">{t('settings.profile.accountEyebrow', { ns: 'app' })}</p>
                     <h2>{form.displayName || profile.displayName}</h2>
                     <p>@{form.username || profile.username}</p>
                     <span className="settings-profile-role">
                       <ShieldCheck size={15} />
-                      {profile.role.nameRu}
+                      {getRoleLabel(profile.role.code, profile.role.nameRu, t)}
                     </span>
                     <div className="settings-profile-meta">
-                      <span className="settings-profile-pill">{formatStatus(profile.status)}</span>
+                      <span className="settings-profile-pill">{formatStatus(profile.status, t)}</span>
                       <span className="settings-profile-pill">
                         <Clock3 size={14} />
-                        Последний вход: {formatDate(profile.lastLoginAt)}
+                        {t('settings.profile.lastLogin', { ns: 'app' })}: {formatDate(profile.lastLoginAt, locale, t)}
                       </span>
                     </div>
                   </div>
@@ -513,30 +533,30 @@ export function SettingsProfilePage() {
                 <div className="settings-profile-avatar-actions">
                   <input ref={avatarInputRef} type="file" accept="image/*" hidden onChange={(event) => void handleAvatarChange(event)} />
                   <Button type="button" variant="secondary" icon={<ImagePlus size={16} />} onClick={() => avatarInputRef.current?.click()}>
-                    {form.avatarUrl ? 'Изменить фото' : 'Добавить фото'}
+                    {form.avatarUrl ? t('settings.profile.buttons.changePhoto', { ns: 'app' }) : t('settings.profile.buttons.addPhoto', { ns: 'app' })}
                   </Button>
                   {form.avatarUrl ? (
                     <Button type="button" variant="secondary" icon={<ImageMinus size={16} />} onClick={() => updateField('avatarUrl', null)}>
-                      Удалить фото
+                      {t('settings.profile.buttons.removePhoto', { ns: 'app' })}
                     </Button>
                   ) : null}
                 </div>
 
                 <div className="settings-profile-facts">
                   <div className="settings-profile-fact">
-                    <span>Роль</span>
-                    <strong>{profile.role.nameRu}</strong>
+                    <span>{t('settings.profile.facts.role', { ns: 'app' })}</span>
+                    <strong>{getRoleLabel(profile.role.code, profile.role.nameRu, t)}</strong>
                   </div>
                   <div className="settings-profile-fact">
-                    <span>Статус</span>
-                    <strong>{formatStatus(profile.status)}</strong>
+                    <span>{t('settings.profile.facts.status', { ns: 'app' })}</span>
+                    <strong>{formatStatus(profile.status, t)}</strong>
                   </div>
                   <div className="settings-profile-fact">
-                    <span>Последний вход</span>
-                    <strong>{formatDate(profile.lastLoginAt)}</strong>
+                    <span>{t('settings.profile.facts.lastLogin', { ns: 'app' })}</span>
+                    <strong>{formatDate(profile.lastLoginAt, locale, t)}</strong>
                   </div>
                   <div className="settings-profile-fact">
-                    <span>Доступов в системе</span>
+                    <span>{t('settings.profile.facts.permissions', { ns: 'app' })}</span>
                     <strong>{profile.permissions.length}</strong>
                   </div>
                 </div>
@@ -545,12 +565,17 @@ export function SettingsProfilePage() {
               <article className="settings-profile-card">
                 <div className="settings-profile-stack">
                   <div>
-                    <h3>Основные данные</h3>
-                    <p className="settings-profile-note">Здесь можно обновить имя, логин и фотографию, которые используются в системе.</p>
+                    <h3>{t('settings.profile.basicTitle', { ns: 'app' })}</h3>
+                    <p className="settings-profile-note">{t('settings.profile.basicText', { ns: 'app' })}</p>
                   </div>
-                  <Input label="Логин" value={form.username} onChange={(event) => updateField('username', event.target.value)} autoComplete="username" />
                   <Input
-                    label="Отображаемое имя"
+                    label={t('settings.profile.fields.username', { ns: 'app' })}
+                    value={form.username}
+                    onChange={(event) => updateField('username', event.target.value)}
+                    autoComplete="username"
+                  />
+                  <Input
+                    label={t('settings.profile.fields.displayName', { ns: 'app' })}
                     value={form.displayName}
                     onChange={(event) => updateField('displayName', event.target.value)}
                     autoComplete="name"
@@ -561,18 +586,18 @@ export function SettingsProfilePage() {
               <article className="settings-profile-card">
                 <div className="settings-profile-stack">
                   <div>
-                    <h3>Безопасность</h3>
-                    <p className="settings-profile-note">Если хотите сменить пароль, укажите текущий пароль и задайте новый.</p>
+                    <h3>{t('settings.profile.securityTitle', { ns: 'app' })}</h3>
+                    <p className="settings-profile-note">{t('settings.profile.securityText', { ns: 'app' })}</p>
                   </div>
                   <Input
-                    label="Текущий пароль"
+                    label={t('settings.profile.fields.currentPassword', { ns: 'app' })}
                     type="password"
                     value={form.currentPassword}
                     onChange={(event) => updateField('currentPassword', event.target.value)}
                     autoComplete="current-password"
                   />
                   <Input
-                    label="Новый пароль"
+                    label={t('settings.profile.fields.newPassword', { ns: 'app' })}
                     type="password"
                     value={form.newPassword}
                     onChange={(event) => updateField('newPassword', event.target.value)}
@@ -586,7 +611,7 @@ export function SettingsProfilePage() {
                 {successMessage ? <p className="settings-profile-success">{successMessage}</p> : null}
                 <div className="settings-profile-actions">
                   <Button type="button" icon={<Save size={16} />} isLoading={updateProfile.isPending} onClick={submit}>
-                    Сохранить профиль
+                    {t('settings.profile.buttons.save', { ns: 'app' })}
                   </Button>
                 </div>
               </article>
@@ -596,22 +621,28 @@ export function SettingsProfilePage() {
               <article className="settings-profile-card settings-profile-activity">
                 <div className="settings-profile-stack">
                   <div>
-                    <h3>История активности</h3>
-                    <p className="settings-profile-note">Последние действия по вашему аккаунту в системе.</p>
+                    <h3>{t('settings.profile.historyTitle', { ns: 'app' })}</h3>
+                    <p className="settings-profile-note">{t('settings.profile.historyText', { ns: 'app' })}</p>
                   </div>
 
                   <div className="settings-profile-activity-list">
                     {profile.recentActivity.length > 0 ? (
                       profile.recentActivity.map((activity) => (
                         <div className="settings-profile-activity-item" key={activity.id}>
-                          <strong>{formatActivity(activity.actionCode)}</strong>
-                          <small>Модуль: {activity.module}</small>
-                          <small>Дата: {formatDate(activity.createdAt)}</small>
-                          <small>IP: {activity.ipAddress || 'Нет данных'}</small>
+                          <strong>{formatActivity(activity.actionCode, t)}</strong>
+                          <small>
+                            {t('settings.profile.activityFields.module', { ns: 'app' })}: {getModuleLabel(activity.module, t)}
+                          </small>
+                          <small>
+                            {t('settings.profile.activityFields.date', { ns: 'app' })}: {formatDate(activity.createdAt, locale, t)}
+                          </small>
+                          <small>
+                            {t('settings.profile.activityFields.ip', { ns: 'app' })}: {activity.ipAddress || t('empty', { ns: 'common' })}
+                          </small>
                         </div>
                       ))
                     ) : (
-                      <p className="settings-profile-note">История активности пока пуста.</p>
+                      <p className="settings-profile-note">{t('settings.profile.historyEmpty', { ns: 'app' })}</p>
                     )}
                   </div>
                 </div>

@@ -6,13 +6,29 @@ import type { ApiErrorPayload, ApiRequestOptions } from './types';
 async function parseResponse<T>(response: Response): Promise<T> {
   const contentType = response.headers.get('content-type') || '';
   const hasJson = contentType.includes('application/json');
-  const payload = hasJson ? await response.json() : null;
+  const rawPayload = hasJson ? await response.json() : await response.text();
 
   if (!response.ok) {
-    throw new ApiError(response.status, (payload || {}) as ApiErrorPayload);
+    if (rawPayload && typeof rawPayload === 'object') {
+      throw new ApiError(response.status, rawPayload as ApiErrorPayload);
+    }
+
+    const textPayload = typeof rawPayload === 'string' ? rawPayload.trim() : '';
+    const sanitizedMessage = textPayload && !textPayload.startsWith('<')
+      ? textPayload
+      : `Request failed with status ${response.status}`;
+
+    throw new ApiError(response.status, {
+      code: `HTTP_${response.status}`,
+      message: sanitizedMessage,
+    });
   }
 
-  return payload as T;
+  if (hasJson) {
+    return rawPayload as T;
+  }
+
+  return null as T;
 }
 
 export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {

@@ -2,8 +2,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { catalogApi } from '../../modules/catalog/api/catalog.api';
+import { getAvailableQuantity, hasAvailableStock } from '../../modules/catalog/utils/stockAvailability';
 import { inventoryApi } from '../../modules/inventory/api/inventory.api';
 import type { Reservation } from '../../modules/inventory/types/inventory.types';
 import { inventoryErrorMessage } from '../../modules/inventory/utils/inventoryErrors';
@@ -13,24 +15,28 @@ import {
   type ReservationActionValues,
   type ReservationFormValues,
 } from '../../modules/inventory/validators/inventory.schemas';
-import { PermissionGate } from '../../shared/permissions/PermissionGate';
 import { StatusBadge } from '../../shared/components/StatusBadge/StatusBadge';
+import { PermissionGate } from '../../shared/permissions/PermissionGate';
 import { Button } from '../../shared/ui/Button';
 import { Input } from '../../shared/ui/Input';
 import { Select } from '../../shared/ui/Select';
 import { Textarea } from '../../shared/ui/Textarea';
 
 export function InventoryReservationsPage() {
+  const { t, i18n } = useTranslation('app');
+  const locale = i18n.resolvedLanguage === 'ar' ? 'ar-EG' : 'ru-RU';
   const [lastReservation, setLastReservation] = useState<Reservation | null>(null);
   const [error, setError] = useState('');
   const queryClient = useQueryClient();
   const productsQuery = useQuery({ queryKey: ['products'], queryFn: () => catalogApi.listProducts() });
+  const products = productsQuery.data?.items ?? [];
   const createMutation = useMutation({
     mutationFn: inventoryApi.createReservation,
     onSuccess: async (response) => {
       setLastReservation(response.reservation);
       setError('');
       await queryClient.invalidateQueries({ queryKey: ['inventory-stock'] });
+      await queryClient.invalidateQueries({ queryKey: ['products'] });
     },
     onError: (mutationError) => setError(inventoryErrorMessage(mutationError)),
   });
@@ -40,6 +46,7 @@ export function InventoryReservationsPage() {
       setLastReservation(response.reservation);
       setError('');
       await queryClient.invalidateQueries({ queryKey: ['inventory-stock'] });
+      await queryClient.invalidateQueries({ queryKey: ['products'] });
     },
     onError: (mutationError) => setError(inventoryErrorMessage(mutationError)),
   });
@@ -49,6 +56,7 @@ export function InventoryReservationsPage() {
       setLastReservation(response.reservation);
       setError('');
       await queryClient.invalidateQueries({ queryKey: ['inventory-stock'] });
+      await queryClient.invalidateQueries({ queryKey: ['products'] });
     },
     onError: (mutationError) => setError(inventoryErrorMessage(mutationError)),
   });
@@ -64,8 +72,21 @@ export function InventoryReservationsPage() {
     resolver: zodResolver(reservationActionSchema) as unknown as Resolver<ReservationActionValues>,
     defaultValues: { reservationId: 0 },
   });
+  const selectedProductId = Number(createForm.watch('productId'));
+  const selectedProduct = products.find((product) => product.id === selectedProductId) ?? null;
 
   async function createReservation(values: ReservationFormValues) {
+    if (!selectedProduct || !hasAvailableStock(selectedProduct)) {
+      setError(t('inventory.errors.unavailable'));
+      return;
+    }
+
+    const available = getAvailableQuantity(selectedProduct);
+    if (values.quantity > available) {
+      setError(t('inventory.errors.quantityExceedsAvailable', { count: available }));
+      return;
+    }
+
     await createMutation.mutateAsync(values);
   }
 
@@ -81,48 +102,54 @@ export function InventoryReservationsPage() {
     <>
       <header className="page-header">
         <div>
-          <p className="eyebrow">Inventory</p>
-          <h1>Резервы склада</h1>
+          <p className="eyebrow">{t('inventory.module')}</p>
+          <h1>{t('inventory.reservations')}</h1>
         </div>
-        <Link to="/inventory/stock">К остаткам</Link>
+        <Link to="/inventory/stock">{t('inventory.backToStock')}</Link>
       </header>
 
-      <section className="panel inventory-warning">
-        Ручное создание резервов временно доступно только для разработки и администрирования, пока модули ремонта, проектов и продаж не подключены.
-      </section>
+      <section className="panel inventory-warning">{t('inventory.reservationsPage.warning')}</section>
 
       {error ? <section className="form-error">{error}</section> : null}
 
       <section className="detail-grid">
         <article className="panel">
-          <h2>Создать резерв</h2>
+          <h2>{t('inventory.reservationsPage.createTitle')}</h2>
           <PermissionGate permission="inventory.reservations.manage">
             <form className="entity-form" onSubmit={createForm.handleSubmit(createReservation)}>
-              <Select label="Товар" error={createForm.formState.errors.productId?.message} {...createForm.register('productId')}>
-                <option value={0}>Выберите товар</option>
-                {(productsQuery.data?.items ?? []).map((product) => (
-                  <option key={product.id} value={product.id}>{product.sku} - {product.default_name}</option>
+              <Select label={t('inventory.product')} error={createForm.formState.errors.productId?.message} {...createForm.register('productId')}>
+                <option value={0}>{t('inventory.selectProduct')}</option>
+                {products.map((product) => (
+                  <option key={product.id} value={product.id} disabled={!hasAvailableStock(product)}>
+                    {product.sku} - {product.default_name} - {t('inventory.available')}: {getAvailableQuantity(product).toLocaleString(locale, { maximumFractionDigits: 4 })}
+                  </option>
                 ))}
               </Select>
-              <Input label="Количество" type="number" step="0.0001" error={createForm.formState.errors.quantity?.message} {...createForm.register('quantity')} />
-              <Input label="Тип источника" error={createForm.formState.errors.sourceType?.message} {...createForm.register('sourceType')} />
-              <Input label="ID источника" type="number" error={createForm.formState.errors.sourceId?.message} {...createForm.register('sourceId')} />
-              <Textarea label="Примечание" {...createForm.register('notes')} />
-              <Button type="submit" isLoading={createMutation.isPending}>Создать резерв</Button>
+              <Input label={t('inventory.quantity')} type="number" step="0.0001" error={createForm.formState.errors.quantity?.message} {...createForm.register('quantity')} />
+              <Input label={t('inventory.reservationsPage.sourceType')} error={createForm.formState.errors.sourceType?.message} {...createForm.register('sourceType')} />
+              <Input label={t('inventory.reservationsPage.sourceId')} type="number" error={createForm.formState.errors.sourceId?.message} {...createForm.register('sourceId')} />
+              <Textarea label={t('inventory.notes')} {...createForm.register('notes')} />
+              <Button type="submit" isLoading={createMutation.isPending} disabled={selectedProduct ? !hasAvailableStock(selectedProduct) : false}>
+                {t('inventory.reservationsPage.createSubmit')}
+              </Button>
             </form>
           </PermissionGate>
         </article>
 
         <aside className="panel entity-actions">
-          <h2>Действия с резервом</h2>
+          <h2>{t('inventory.reservationsPage.actionsTitle')}</h2>
           <PermissionGate permission="inventory.reservations.manage">
             <form className="entity-form" onSubmit={consumeForm.handleSubmit(consume)}>
-              <Input label="ID резерва для списания" type="number" error={consumeForm.formState.errors.reservationId?.message} {...consumeForm.register('reservationId')} />
-              <Button type="submit" variant="danger" isLoading={consumeMutation.isPending}>Списать резерв</Button>
+              <Input label={t('inventory.reservationsPage.consumeId')} type="number" error={consumeForm.formState.errors.reservationId?.message} {...consumeForm.register('reservationId')} />
+              <Button type="submit" variant="danger" isLoading={consumeMutation.isPending}>
+                {t('inventory.reservationsPage.consumeSubmit')}
+              </Button>
             </form>
             <form className="entity-form" onSubmit={releaseForm.handleSubmit(release)}>
-              <Input label="ID резерва для освобождения" type="number" error={releaseForm.formState.errors.reservationId?.message} {...releaseForm.register('reservationId')} />
-              <Button type="submit" variant="secondary" isLoading={releaseMutation.isPending}>Освободить резерв</Button>
+              <Input label={t('inventory.reservationsPage.releaseId')} type="number" error={releaseForm.formState.errors.reservationId?.message} {...releaseForm.register('reservationId')} />
+              <Button type="submit" variant="secondary" isLoading={releaseMutation.isPending}>
+                {t('inventory.reservationsPage.releaseSubmit')}
+              </Button>
             </form>
           </PermissionGate>
         </aside>
@@ -130,11 +157,19 @@ export function InventoryReservationsPage() {
 
       {lastReservation ? (
         <section className="panel entity-summary">
-          <h2>Последний резерв #{lastReservation.id}</h2>
-          <p><strong>Статус:</strong> <StatusBadge domain="inventoryReservation" status={lastReservation.status} /></p>
-          <p><strong>Товар:</strong> {lastReservation.product_id}</p>
-          <p><strong>Количество:</strong> {lastReservation.quantity}</p>
-          <p><strong>Источник:</strong> {lastReservation.source_type} #{lastReservation.source_id}</p>
+          <h2>{t('inventory.reservationsPage.lastTitle', { id: lastReservation.id })}</h2>
+          <p>
+            <strong>{t('inventory.status')}:</strong> <StatusBadge domain="inventoryReservation" status={lastReservation.status} />
+          </p>
+          <p>
+            <strong>{t('inventory.product')}:</strong> {lastReservation.product_id}
+          </p>
+          <p>
+            <strong>{t('inventory.quantity')}:</strong> {Number(lastReservation.quantity).toLocaleString(locale, { maximumFractionDigits: 4 })}
+          </p>
+          <p>
+            <strong>{t('inventory.reservationsPage.sourceLabel')}:</strong> {lastReservation.source_type} #{lastReservation.source_id}
+          </p>
         </section>
       ) : null}
     </>

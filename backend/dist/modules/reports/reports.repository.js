@@ -5,7 +5,14 @@ async function one(sql) {
 }
 export class ReportsRepository {
     sales() {
-        return one(`SELECT COUNT(*) invoices, COALESCE(SUM(total),0) total, COALESCE(SUM(subtotal),0) subtotal FROM sales_invoices`);
+        return one(`
+      SELECT
+        COUNT(*) invoices,
+        COALESCE(SUM(total), 0) total,
+        COALESCE(SUM(subtotal), 0) subtotal
+      FROM sales_invoices
+      WHERE document_type = 'invoice' AND status = 'approved'
+    `);
     }
     inventory() {
         return one(`SELECT COUNT(*) products, COALESCE(SUM(quantity_on_hand),0) on_hand, COALESCE(SUM(quantity_reserved),0) reserved FROM inventory_stock_balances`);

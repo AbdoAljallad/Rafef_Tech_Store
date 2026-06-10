@@ -8,6 +8,7 @@ export const repairApi = {
   listModels() { return httpClient.get<{ items: any[] }>('/api/repair/models'); },
   createModel(payload: any) { return httpClient.post<{ model: any }>('/api/repair/models', payload); },
   createDevice(payload: any) { return httpClient.post<{ device: any }>('/api/repair/devices', payload); },
+  listCustomerDevices(customerId: number | string) { return httpClient.get<{ items: any[] }>(`/api/repair/customers/${customerId}/devices`); },
 
   listOrders(params?: { offset?: number; limit?: number }) {
     const limit = params?.limit ?? 20;
@@ -17,8 +18,14 @@ export const repairApi = {
   },
   createOrder(payload: any) { return httpClient.post<{ order: any }>('/api/repair/orders', payload); },
   getOrder(id: number | string) { return httpClient.get<{ order: any }>(`/api/repair/orders/${id}`); },
+  getOrderBilling(id: number | string) { return httpClient.get<{ billing: any }>(`/api/repair/orders/${id}/billing`); },
+  deleteOrder(id: number | string) { return httpClient.delete<void>(`/api/repair/orders/${id}`); },
   addService(orderId: number | string, payload: any) { return httpClient.post<{ service: any }>(`/api/repair/orders/${orderId}/services`, payload); },
+  updateService(orderId: number | string, serviceId: number | string, payload: any) { return httpClient.patch<{ order: any }>(`/api/repair/orders/${orderId}/services/${serviceId}`, payload); },
+  removeService(orderId: number | string, serviceId: number | string) { return httpClient.delete<void>(`/api/repair/orders/${orderId}/services/${serviceId}`); },
   addPart(orderId: number | string, payload: any) { return httpClient.post<{ part: any }>(`/api/repair/orders/${orderId}/parts`, payload); },
+  updatePart(orderId: number | string, partId: number | string, payload: any) { return httpClient.patch<{ order: any }>(`/api/repair/orders/${orderId}/parts/${partId}`, payload); },
+  removePart(orderId: number | string, partId: number | string) { return httpClient.delete<void>(`/api/repair/orders/${orderId}/parts/${partId}`); },
   changeStatus(orderId: number | string, payload: any) { return httpClient.post<{ order: any }>(`/api/repair/orders/${orderId}/status`, payload); },
   addNote(orderId: number | string, payload: any) { return httpClient.post<{ note: any }>(`/api/repair/orders/${orderId}/notes`, payload); },
   receipt(orderId: number | string) { return httpClient.get<{ receipt: any }>(`/api/repair/orders/${orderId}/receipt`); },

@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, type Resolver } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../../../shared/ui/Button';
 import { Input } from '../../../shared/ui/Input';
 import { Select } from '../../../shared/ui/Select';
@@ -16,6 +17,7 @@ type ProductFormProps = {
 };
 
 export function ProductForm({ product, categories, units, onSubmit, isSubmitting, mode }: ProductFormProps) {
+  const { t } = useTranslation(['app', 'common']);
   const schema = mode === 'create' ? productFormSchema : productEditSchema;
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(schema) as unknown as Resolver<ProductFormValues>,
@@ -35,21 +37,51 @@ export function ProductForm({ product, categories, units, onSubmit, isSubmitting
   return (
     <form className="entity-form" onSubmit={form.handleSubmit((values) => onSubmit(values as ProductFormValues | ProductEditValues))}>
       <Input label="SKU" error={form.formState.errors.sku?.message} {...form.register('sku')} />
-      <Input label="Название товара" error={form.formState.errors.defaultName?.message} {...form.register('defaultName')} />
-      <Select label="Категория" {...form.register('categoryId')}>
-        {categories.map((category) => <option value={category.id} key={category.id}>{category.default_name}</option>)}
+      <Input label={t('catalog.form.nameLabel', { ns: 'app' })} error={form.formState.errors.defaultName?.message} {...form.register('defaultName')} />
+      <Select label={t('catalog.form.categoryLabel', { ns: 'app' })} {...form.register('categoryId')}>
+        {categories.map((category) => (
+          <option value={category.id} key={category.id}>
+            {category.default_name}
+          </option>
+        ))}
       </Select>
-      <Select label="Единица" {...form.register('unitId')}>
-        {units.map((unit) => <option value={unit.id} key={unit.id}>{unit.name_ru}</option>)}
+      <Select label={t('catalog.form.unitLabel', { ns: 'app' })} {...form.register('unitId')}>
+        {units.map((unit) => (
+          <option value={unit.id} key={unit.id}>
+            {unit.name_ru}
+          </option>
+        ))}
       </Select>
-      <Select label="Учет" {...form.register('trackingType')}>
-        <option value="quantity">Количество</option><option value="serial">Серийный номер</option><option value="batch">Партия</option>
+      <Select label={t('catalog.form.trackingLabel', { ns: 'app' })} {...form.register('trackingType')}>
+        <option value="quantity">{t('catalog.form.trackingTypes.quantity', { ns: 'app' })}</option>
+        <option value="serial">{t('catalog.form.trackingTypes.serial', { ns: 'app' })}</option>
+        <option value="batch">{t('catalog.form.trackingTypes.batch', { ns: 'app' })}</option>
       </Select>
-      <Input label="Закупочная цена" type="number" step="0.01" error={form.formState.errors.currentPurchasePrice?.message} {...form.register('currentPurchasePrice')} />
-      <Input label="Цена продажи" type="number" step="0.01" error={form.formState.errors.currentSalePrice?.message} {...form.register('currentSalePrice')} />
-      <Input label="Минимальный остаток" type="number" step="0.01" error={form.formState.errors.reorderThreshold?.message} {...form.register('reorderThreshold')} />
-      {mode === 'create' ? <Input label="Штрихкод" {...form.register('barcode')} /> : null}
-      <Button type="submit" isLoading={isSubmitting}>Сохранить</Button>
+      <Input
+        label={t('catalog.form.purchasePriceLabel', { ns: 'app' })}
+        type="number"
+        step="0.01"
+        error={form.formState.errors.currentPurchasePrice?.message}
+        {...form.register('currentPurchasePrice')}
+      />
+      <Input
+        label={t('catalog.form.salePriceLabel', { ns: 'app' })}
+        type="number"
+        step="0.01"
+        error={form.formState.errors.currentSalePrice?.message}
+        {...form.register('currentSalePrice')}
+      />
+      <Input
+        label={t('catalog.form.reorderThresholdLabel', { ns: 'app' })}
+        type="number"
+        step="0.01"
+        error={form.formState.errors.reorderThreshold?.message}
+        {...form.register('reorderThreshold')}
+      />
+      {mode === 'create' ? <Input label={t('catalog.form.barcodeLabel', { ns: 'app' })} {...form.register('barcode')} /> : null}
+      <Button type="submit" isLoading={isSubmitting}>
+        {t('common:actions.save')}
+      </Button>
     </form>
   );
 }

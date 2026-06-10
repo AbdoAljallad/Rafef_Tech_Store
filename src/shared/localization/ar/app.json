@@ -20,6 +20,20 @@
       "red": "أحمر",
       "emerald": "زمردي",
       "violet": "بنفسجي"
+    },
+    "listing": {
+      "results": "المعروض: {{from}}-{{to}} من {{total}}",
+      "resultsSimple": "المعروض: {{from}}-{{to}}",
+      "page": "الصفحة {{page}}",
+      "pageOf": "الصفحة {{page}} من {{totalPages}}",
+      "perPage": "في الصفحة",
+      "cards": "بطاقات",
+      "table": "جدول",
+      "first": "الأولى",
+      "previous": "السابق",
+      "next": "التالي",
+      "last": "الأخيرة",
+      "open": "فتح"
     }
   },
   "ticker": {
@@ -74,6 +88,13 @@
     "searchCustomers": "بحث عن العملاء",
     "selectCustomer": "اختر العميل",
     "selectCustomerPlaceholder": "-- اختر العميل --",
+    "useExistingDevice": "اختيار جهاز موجود",
+    "createNewDevice": "إنشاء جهاز جديد",
+    "selectDevice": "الجهاز",
+    "deviceRequired": "اختر جهازًا أو أنشئ جهازًا جديدًا",
+    "serialNo": "الرقم التسلسلي",
+    "noDevicesForCustomer": "لا توجد أجهزة محفوظة لهذا العميل بعد",
+    "openInPos": "فتح في الكاشير",
     "deviceId": "معرّف الجهاز",
     "deviceIdPlaceholder": "معرّف الجهاز اختياري",
     "problemDescription": "وصف المشكلة",
@@ -81,20 +102,84 @@
     "create": "إنشاء",
     "customerRequired": "يرجى اختيار العميل",
     "orderTitle": "طلب الصيانة {{code}}",
+    "backToOrders": "العودة إلى الطلبات",
+    "heroText": "لوحة متابعة الطلب وحجز القطع والفوترة وتسليم الجهاز من مكان واحد.",
+    "quickActions": "إجراءات سريعة",
+    "summary": "ملخص الطلب",
+    "billingSummary": "ملخص الفوترة",
+    "statusWorkflow": "إدارة الحالة",
+    "statusWorkflowHint": "يمكنك تغيير المرحلة من القائمة أو استخدام الأزرار السريعة للحالات الشائعة.",
+    "history": "سجل الحالات",
+    "historyHint": "أحدث التغييرات المرتبطة بحالة الطلب.",
+    "serviceCount": "الخدمات",
+    "partCount": "القطع",
+    "pendingLines": "بنود غير مفوترة",
+    "billedLines": "بنود مفوترة",
+    "createdAt": "تاريخ الإنشاء",
+    "updatedAt": "آخر تحديث",
+    "noNotes": "لا توجد ملاحظات بعد",
+    "noHistory": "سجل الحالات فارغ حاليًا",
+    "notePlaceholder": "أضف ملاحظة داخلية تظهر في سجل الطلب...",
+    "markReady": "جاهز للتسليم",
+    "markDelivered": "تم التسليم",
+    "deleteOrder": "حذف الطلب",
+    "deleteOrderConfirm": "سيتم حذف طلب الصيانة بالكامل مع خدماته وقطعه وملاحظاته، وسيتم تحرير الحجوزات غير المفوترة. هل تريد المتابعة؟",
     "problem": "المشكلة",
     "services": "الخدمات",
     "serviceName": "اسم الخدمة",
+    "unitPrice": "السعر",
     "serviceNameRequired": "يرجى إدخال اسم الخدمة",
     "addService": "إضافة خدمة",
+    "editService": "تعديل الخدمة",
     "parts": "القطع",
     "searchProducts": "ابحث عن المنتجات بالاسم أو SKU",
     "partProduct": "المنتج المستخدم",
     "selectProduct": "-- اختر المنتج --",
     "qty": "الكمية",
     "addPart": "إضافة قطعة",
+    "editPart": "تعديل القطعة",
+    "saveChanges": "حفظ التعديلات",
+    "cancelEdit": "إلغاء",
+    "editingLine": "جارٍ تعديل البند",
     "productRequired": "يرجى اختيار المنتج",
     "quantityMin": "يجب أن تكون الكمية 1 على الأقل",
     "reservationCreated": "تم إنشاء الحجز: المعرف {{reservationId}} - الكمية {{quantity}}",
+    "removeService": "حذف الخدمة",
+    "removePart": "حذف القطعة",
+    "removeServiceConfirm": "هل تريد حذف هذه الخدمة من طلب الصيانة؟",
+    "removePartConfirm": "هل تريد حذف هذه القطعة وتحرير حجزها من المخزون؟",
+    "cancelOrderConfirm": "إلغاء الطلب سيحرر حجوزات القطع غير المفوترة. هل تريد المتابعة؟",
+    "lockedForEditing": "هذا الطلب مغلق للتحرير ولا يمكن إضافة خدمات أو قطع جديدة إليه.",
+    "billed": "تمت فوترته",
+    "noServices": "لا توجد خدمات مضافة بعد",
+    "noParts": "لا توجد قطع مضافة بعد",
+    "reservationStatuses": {
+      "active": "محجوز",
+      "released": "تم تحرير الحجز",
+      "consumed": "تم صرفه",
+      "cancelled": "ملغي"
+    },
+    "messages": {
+      "serviceAdded": "تمت إضافة الخدمة.",
+      "partAdded": "تمت إضافة القطعة.",
+      "serviceUpdated": "تم تحديث الخدمة.",
+      "partUpdated": "تم تحديث القطعة.",
+      "serviceRemoved": "تم حذف الخدمة.",
+      "partRemoved": "تم حذف القطعة وتحرير الحجز إن وجد.",
+      "statusUpdated": "تم تحديث حالة الطلب.",
+      "noteAdded": "تمت إضافة الملاحظة.",
+      "orderDeleted": "تم حذف طلب الصيانة."
+    },
+    "errors": {
+      "generic": "تعذر تنفيذ العملية.",
+      "network": "تعذر الاتصال بالخادم.",
+      "notFound": "العنصر المطلوب غير موجود.",
+      "stateConflict": "لا يمكن تنفيذ العملية في الحالة الحالية.",
+      "insufficientStock": "الكمية المطلوبة غير متاحة في المخزون.",
+      "validation": "تحقق من البيانات المدخلة ثم أعد المحاولة.",
+      "permissionDenied": "ليس لديك صلاحية لتنفيذ هذا الإجراء.",
+      "authRequired": "يجب تسجيل الدخول أولًا."
+    },
     "notes": "الملاحظات",
     "addNote": "إضافة ملاحظة",
     "viewReceipt": "عرض الإيصال",
@@ -107,9 +192,33 @@
     "subtotal": "الإجمالي الفرعي",
     "tax": "الضريبة",
     "total": "الإجمالي",
-    "print": "طباعة"
+    "print": "طباعة",
+    "devicesTitle": "الأجهزة والقوائم",
+    "devicesPage": {
+      "categoriesTitle": "الفئات",
+      "brandsTitle": "العلامات التجارية",
+      "modelsTitle": "الموديلات",
+      "createDeviceTitle": "إنشاء جهاز",
+      "createCategory": "إنشاء فئة",
+      "createBrand": "إنشاء علامة",
+      "createModel": "إنشاء موديل",
+      "createDevice": "إنشاء الجهاز",
+      "categoryCode": "كود الفئة",
+      "categoryName": "اسم الفئة",
+      "brandName": "اسم العلامة",
+      "categoryId": "معرف الفئة",
+      "brandId": "معرف العلامة",
+      "modelId": "معرف الموديل",
+      "modelName": "اسم الموديل",
+      "customerId": "معرف العميل",
+      "deviceName": "اسم الجهاز",
+      "noCategories": "لا توجد فئات",
+      "noBrands": "لا توجد علامات",
+      "noModels": "لا توجد موديلات"
+    }
   },
   "sales": {
+    "module": "الكاشير",
     "receiptTitle": "فاتورة البيع رقم {{code}}",
     "customer": "العميل",
     "walkIn": "عميل مباشر",
@@ -118,14 +227,191 @@
     "subtotal": "الإجمالي الفرعي",
     "tax": "الضريبة",
     "total": "الإجمالي",
-    "print": "طباعة"
+    "print": "طباعة",
+    "titles": {
+      "pos": "الكاشير",
+      "invoice": "فاتورة",
+      "quote": "بيان أسعار",
+      "print": "الطباعة",
+      "history": "أرشيف الفواتير"
+    },
+    "sections": {
+      "finder": "المنتجات",
+      "finderHint": "بحث وإضافة سريعة إلى المستند.",
+      "cart": "بنود المستند",
+      "cartHint": "يمكن تعديل الكمية والسعر قبل الحفظ.",
+      "setup": "الإعدادات",
+      "setupHint": "حدد نوع المستند والعميل.",
+      "totals": "المجاميع",
+      "totalsHint": "المبلغ المستلم والباقي في الكاشير.",
+      "details": "تفاصيل المستند",
+      "detailsHint": "الحالة والتواريخ والبنود.",
+      "printControls": "تحكم الطباعة",
+      "printControlsHint": "الرأس والتذييل والملاحظة للقالب المطبوع.",
+      "archive": "أرشيف الفواتير",
+      "archiveHint": "بحث وطباعة الفواتير وبيانات الأسعار القديمة."
+    },
+    "actions": {
+      "archive": "الأرشيف",
+      "backToPos": "العودة إلى الكاشير",
+      "backToDocument": "العودة إلى المستند",
+      "backToHistory": "العودة إلى الأرشيف",
+      "add": "إضافة",
+      "remove": "حذف",
+      "openDocument": "فتح",
+      "view": "عرض",
+      "printA4": "طباعة A4",
+      "printReceipt": "طباعة إيصال",
+      "saveDraft": "حفظ كمسودة",
+      "saveAndApprove": "حفظ واعتماد",
+      "createQuote": "إنشاء بيان أسعار",
+      "clearCart": "تفريغ",
+      "scan": "بحث",
+      "approve": "اعتماد الفاتورة",
+      "void": "إلغاء",
+      "saveText": "حفظ النص",
+      "saveAndPrint": "حفظ وطباعة",
+      "a4Layout": "A4",
+      "receiptLayout": "إيصال",
+      "newDocument": "مستند جديد"
+    },
+    "fields": {
+      "searchProducts": "بحث المنتجات",
+      "searchDocuments": "بحث بالكود أو العميل",
+      "searchCustomers": "بحث العميل",
+      "barcode": "الباركود",
+      "documentType": "نوع المستند",
+      "customerSelect": "العميل",
+      "amountReceived": "المبلغ المستلم",
+      "changeDue": "الباقي",
+      "category": "الفئة",
+      "department": "القسم",
+      "stockLevel": "المخزون",
+      "sort": "الترتيب",
+      "product": "المنتج",
+      "skuBarcode": "SKU / الباركود",
+      "price": "السعر",
+      "available": "المتاح",
+      "quantity": "الكمية",
+      "unitPrice": "سعر الوحدة",
+      "lineTotal": "الإجمالي",
+      "status": "الحالة",
+      "type": "النوع",
+      "date": "التاريخ",
+      "createdAt": "تاريخ الإنشاء",
+      "approvedAt": "تاريخ الاعتماد",
+      "voidedAt": "تاريخ الإلغاء",
+      "code": "الرقم",
+      "lineCount": "عدد البنود",
+      "customerCode": "كود العميل",
+      "dateFrom": "من تاريخ",
+      "dateTo": "إلى تاريخ",
+      "note": "ملاحظة",
+      "a4Header": "رأس A4",
+      "a4Footer": "تذييل A4",
+      "receiptHeader": "رأس الإيصال",
+      "receiptFooter": "تذييل الإيصال",
+      "customerNote": "ملاحظة للعميل"
+    },
+    "filters": {
+      "categoryAll": "كل الفئات",
+      "scopeAll": "كل الأقسام",
+      "scopeSales": "منتجات البيع",
+      "scopeRepair": "قطع الصيانة",
+      "scopeCreative": "الطباعة / التصميم",
+      "stockAll": "كل الأرصدة",
+      "stockIn": "متاح",
+      "stockLow": "مخزون منخفض",
+      "stockOut": "غير متاح",
+      "sortName": "حسب الاسم",
+      "sortPriceAsc": "السعر: من الأقل",
+      "sortPriceDesc": "السعر: من الأعلى",
+      "sortStockAsc": "المخزون: من الأقل",
+      "sortStockDesc": "المخزون: من الأعلى",
+      "documentAll": "كل المستندات",
+      "statusAll": "كل الحالات"
+    },
+    "documentTypes": {
+      "invoice": "فاتورة",
+      "quote": "بيان أسعار"
+    },
+    "statuses": {
+      "draft": "مسودة",
+      "approved": "معتمدة",
+      "voided": "ملغاة",
+      "returned": "مرتجع"
+    },
+    "empty": {
+      "products": "لا توجد منتجات مطابقة للفلاتر الحالية.",
+      "cart": "أضف منتجات لبدء إنشاء المستند.",
+      "history": "لا توجد مستندات.",
+      "note": "لا توجد ملاحظة",
+      "customer": "عميل مباشر"
+    },
+    "calculator": {
+      "title": "الآلة الحاسبة",
+      "open": "فتح الآلة الحاسبة",
+      "close": "إغلاق الآلة الحاسبة",
+      "ready": "جاهزة",
+      "clear": "C",
+      "delete": "DEL",
+      "total": "الإجمالي",
+      "paid": "المدفوع"
+    },
+    "printLayouts": {
+      "a4": "A4",
+      "receipt": "إيصال"
+    },
+    "history": {
+      "results": "المعروض: {{from}}-{{to}} من {{total}}",
+      "page": "الصفحة {{page}} / {{totalPages}}",
+      "previous": "السابق",
+      "next": "التالي"
+    },
+    "notes": {
+      "quoteSafe": "بيان الأسعار لا يخصم من المخزون ولا يدخل في المبيعات المعتمدة.",
+      "invoiceAffectsStock": "الفاتورة المعتمدة تخصم المخزون وتحتسب كمبيعات."
+    },
+    "notices": {
+      "created": "تم إنشاء {{label}} {{code}}."
+    },
+    "printDefaults": {
+      "a4Footer": "الأسعار والتوفر تخضع للمخزون الحالي.",
+      "receiptFooter": "شكراً لزيارتكم."
+    },
+    "errors": {
+      "generic": "تعذر تنفيذ العملية.",
+      "network": "لا يوجد اتصال بالخادم.",
+      "notFound": "المستند غير موجود.",
+      "stateConflict": "حالة المستند الحالية لا تسمح بهذا الإجراء.",
+      "insufficientStock": "المخزون غير كافٍ للاعتماد.",
+      "outOfStock": "المنتج غير متاح حاليًا في المخزون.",
+      "quantityExceedsAvailable": "الكمية المطلوبة تتجاوز المتاح حاليًا. المتاح الآن: {{count}}.",
+      "validation": "يرجى مراجعة الحقول.",
+      "permissionDenied": "ليست لديك صلاحيات كافية لهذا الإجراء.",
+      "authRequired": "يلزم تسجيل الدخول مرة أخرى.",
+      "barcodeRequired": "أدخل باركود للبحث.",
+      "barcodeNotFound": "لم يتم العثور على منتج لهذا الباركود.",
+      "cartRequired": "أضف منتجاً واحداً على الأقل.",
+      "customerRequired": "اختر عميلاً أو ابقِ وضع العميل المباشر.",
+      "createFailed": "تعذر إنشاء المستند.",
+      "approveFailed": "تعذر اعتماد الفاتورة. تم الاحتفاظ بها كمسودة للمراجعة.",
+      "invalidCalculator": "العبارة الحسابية غير صحيحة.",
+      "documentMissing": "لم يعد الخادم بيانات المستند.",
+      "voidPrompt": "سبب الإلغاء",
+      "loadHistory": "تعذر تحميل أرشيف المستندات."
+    }
   },
   "finance": {
     "module": "المالية",
     "accountsTitle": "الحسابات المالية",
     "newAccount": "حساب جديد",
+    "methodsTitle": "طرق الدفع",
+    "newMethod": "طريقة دفع جديدة",
+    "noMethods": "لم يتم العثور على طرق دفع",
     "code": "الكود",
     "name": "الاسم",
+    "provider": "المزوّد",
     "type": "النوع",
     "create": "إنشاء",
     "noAccounts": "لا توجد حسابات",
@@ -135,15 +421,36 @@
     "cashOut": "النقد الخارج",
     "expensesTitle": "المصروفات",
     "accountId": "معرّف الحساب",
+    "customerId": "معرّف العميل",
     "amount": "المبلغ",
     "category": "الفئة",
     "refundsTitle": "المرتجعات",
+    "ledgerTitle": "قيد في دفتر العميل",
     "transactionId": "معرّف العملية",
     "transactionsTitle": "الحركات المالية",
     "methodId": "معرّف طريقة الدفع",
     "direction": "الاتجاه",
     "directionIn": "دخول",
-    "directionOut": "خروج"
+    "directionOut": "خروج",
+    "workSessionsTitle": "ورديات العمل",
+    "workSessionsPage": {
+      "startTitle": "فتح الوردية",
+      "startingBalance": "الرصيد الافتتاحي",
+      "startAction": "فتح الوردية",
+      "closeTitle": "إغلاق الوردية",
+      "sessionId": "معرّف الوردية",
+      "endingBalance": "الرصيد الفعلي",
+      "closeAction": "إغلاق الوردية",
+      "resultTitle": "النتيجة",
+      "startNote": "فتح من الواجهة",
+      "closeNote": "إغلاق من الواجهة"
+    },
+    "ledgerPage": {
+      "change": "التغيير",
+      "balanceAfter": "الرصيد بعد العملية",
+      "create": "إنشاء القيد",
+      "interfaceNote": "قيد من الواجهة"
+    }
   },
   "projects": {
     "module": "المشاريع",
@@ -211,7 +518,18 @@
       "on_hold": "معلّق",
       "completed": "مكتمل",
       "cancelled": "ملغي"
-    }
+    },
+    "listTitle": "مشاريع CCTV والشبكات",
+    "typesButton": "الأنواع",
+    "newProject": "مشروع جديد",
+    "loadProjectsFailed": "تعذر تحميل المشاريع",
+    "noProjects": "لا توجد مشاريع",
+    "newProjectTitle": "مشروع جديد",
+    "typeLabel": "نوع المشروع",
+    "typeNone": "بدون نوع",
+    "customerSearch": "بحث العميل",
+    "customerNone": "بدون عميل",
+    "createProject": "إنشاء المشروع"
   },
   "commandCenter": {
     "eyebrow": "Rafef Tech",
@@ -280,6 +598,787 @@
       "finance1": "يمكن إنهاء مسودات المبيعات من الكاشير مباشرة.",
       "finance2": "المرتجعات وإغلاق اليوم ضمن نفس سيناريو المتابعة.",
       "finance3": "التقارير المالية هي الخطوة التالية للتحقق السريع."
+    }
+  },
+  "customers": {
+    "module": "CRM",
+    "title": "العملاء",
+    "heroDescription": "قاعدة موحدة للعملاء وبيانات التواصل وسجل التفاعل.",
+    "newCustomer": "عميل جديد",
+    "createCustomer": "إنشاء عميل",
+    "searchTitle": "بحث العملاء",
+    "searchDescription": "بحث سريع داخل قاعدة العملاء.",
+    "searchPlaceholder": "ابحث بالاسم أو الهاتف أو الكود",
+    "listTitle": "قائمة العملاء",
+    "type": "النوع",
+    "customer": "العميل",
+    "code": "الكود",
+    "phone": "الهاتف",
+    "email": "البريد الإلكتروني",
+    "notes": "الملاحظات",
+    "action": "الإجراء",
+    "business": "شركة",
+    "individual": "فرد",
+    "frozen": "مجمّد",
+    "missingPhone": "الهاتف غير مضاف",
+    "missingEmail": "البريد الإلكتروني غير مضاف",
+    "sortAria": "ترتيب العملاء",
+    "viewModeAria": "تبديل عرض القائمة",
+    "pageSizeAria": "عدد العملاء في الصفحة",
+    "searchAria": "بحث العملاء",
+    "listAria": "قائمة العملاء",
+    "paginationAria": "التنقل بين صفحات العملاء",
+    "sort": {
+      "nameAsc": "الاسم: أ-ي",
+      "nameDesc": "الاسم: ي-أ",
+      "codeAsc": "الكود: تصاعدي",
+      "codeDesc": "الكود: تنازلي",
+      "createdDesc": "تاريخ الإنشاء: الأحدث أولاً",
+      "createdAsc": "تاريخ الإنشاء: الأقدم أولاً"
+    },
+    "states": {
+      "loadingTitle": "جارٍ تحميل العملاء",
+      "loadingText": "نجلب أحدث بيانات CRM.",
+      "errorTitle": "تعذر تحميل العملاء",
+      "errorText": "تحقق من الاتصال بالخادم ثم أعد المحاولة.",
+      "emptySearchTitle": "لم يتم العثور على عملاء",
+      "emptySearchText": "جرّب تعديل عبارة البحث أو مراجعة الكتابة.",
+      "emptyTitle": "لا يوجد عملاء بعد",
+      "emptyText": "أنشئ أول عميل لبدء العمل على CRM."
+    },
+    "form": {
+      "basicTitle": "البيانات الأساسية",
+      "basicText": "اسم العميل ونوعه وصورته تُستخدم في CRM والصيانة والمبيعات والمشاريع.",
+      "uploadPhoto": "رفع صورة",
+      "removePhoto": "حذف الصورة",
+      "nameLabel": "اسم العميل *",
+      "namePlaceholder": "مثال: أحمد علي أو شركة رفيف",
+      "typeLabel": "النوع",
+      "types": {
+        "person": "فرد",
+        "business": "شركة"
+      },
+      "contactsTitle": "وسائل التواصل",
+      "contactsText": "أضف وسيلة تواصل واحدة أو أكثر منذ إنشاء العميل.",
+      "contactItem": "جهة اتصال {{index}}",
+      "removeContact": "حذف",
+      "contactTypeLabel": "نوع التواصل",
+      "contactValueLabel": "القيمة",
+      "contactValuePlaceholder": "أدخل الهاتف أو البريد أو وسيلة تواصل أخرى",
+      "primaryContact": "جهة الاتصال الأساسية",
+      "primaryHint": "تُستخدم كقناة التواصل الرئيسية لهذا النوع.",
+      "addContact": "إضافة وسيلة تواصل",
+      "notesTitle": "الملاحظات",
+      "notesText": "ملاحظة داخلية لفريق المتجر.",
+      "notesLabel": "الملاحظات",
+      "notesPlaceholder": "تفاصيل مهمة عن العميل أو تفضيلاته",
+      "fileReadError": "تعذر قراءة الملف",
+      "contactTypes": {
+        "phone": "الهاتف",
+        "email": "البريد الإلكتروني",
+        "whatsapp": "واتساب",
+        "telegram": "تيليجرام",
+        "other": "أخرى"
+      }
+    },
+    "locationTypes": {
+      "home": "المنزل",
+      "school": "المدرسة",
+      "company": "الشركة",
+      "store": "المتجر",
+      "factory": "المصنع",
+      "hospital": "المستشفى",
+      "other": "أخرى"
+    },
+    "detail": {
+      "fallbackName": "العميل",
+      "backToList": "العودة إلى قائمة العملاء",
+      "loading": "جارٍ تحميل العميل...",
+      "error": "تعذر تحميل بطاقة العميل.",
+      "cardEyebrow": "بطاقة العميل",
+      "active": "نشط",
+      "avatarFallbackNote": "لم تتم إضافة صورة بعد، لذلك يتم استخدام صورة رمزية تحمل أحرف اسم العميل.",
+      "accountFrozen": "الحساب مجمّد",
+      "accountActive": "الحساب نشط",
+      "edit": "تعديل",
+      "unfreeze": "إلغاء التجميد",
+      "freeze": "تجميد",
+      "addContact": "إضافة جهة اتصال",
+      "addLocation": "إضافة عنوان",
+      "addNote": "إضافة ملاحظة",
+      "delete": "حذف العميل",
+      "overview": "المعلومات الأساسية",
+      "secondaryPhone": "هاتف إضافي",
+      "createdAt": "تاريخ الإنشاء",
+      "updatedAt": "آخر تحديث",
+      "contacts": "وسائل التواصل",
+      "primaryContact": "جهة الاتصال الأساسية",
+      "contactsEmpty": "لم تتم إضافة وسائل تواصل بعد.",
+      "locations": "العناوين والمواقع",
+      "addressMissing": "العنوان غير مضاف",
+      "locationsEmpty": "لا توجد عناوين بعد.",
+      "notesHistory": "سجل الملاحظات",
+      "notesEmpty": "سجل الملاحظات فارغ حاليًا.",
+      "editTitle": "تعديل العميل",
+      "newContactTitle": "جهة اتصال جديدة",
+      "newLocationTitle": "عنوان جديد",
+      "newNoteTitle": "ملاحظة جديدة",
+      "deleteTitle": "حذف العميل",
+      "deleteMessage": "هل تريد حذف العميل {{name}}؟ سيتم إخفاؤه من القائمة النشطة.",
+      "locationName": "الاسم",
+      "addressLabel": "العنوان",
+      "mapUrl": "رابط الخريطة"
+    }
+  },
+  "catalog": {
+    "module": "الكتالوج",
+    "productsTitle": "المنتجات",
+    "newProduct": "منتج جديد",
+    "searchPlaceholder": "ابحث بالـ SKU أو الاسم",
+    "barcodeLookup": "بحث بالباركود",
+    "categories": "الفئات",
+    "services": "الخدمات",
+    "loadFailed": "تعذر تحميل المنتجات",
+    "emptyProducts": "لم يتم العثور على منتجات",
+    "backToProducts": "إلى المنتجات",
+    "backToList": "العودة للقائمة",
+    "barcodeLabel": "الباركود",
+    "barcodeNotFound": "لم يتم العثور على المنتج",
+    "openProduct": "فتح المنتج",
+    "newCategory": "فئة جديدة",
+    "emptyCategories": "لم يتم العثور على فئات",
+    "categoryFlags": {
+      "sales": "إظهار في المبيعات",
+      "repair": "إظهار في الصيانة",
+      "projects": "إظهار في المشاريع",
+      "creative": "إظهار في التصميم/الطباعة"
+    },
+    "form": {
+      "nameLabel": "اسم المنتج",
+      "categoryLabel": "الفئة",
+      "unitLabel": "الوحدة",
+      "trackingLabel": "التتبع",
+      "trackingTypes": {
+        "quantity": "كمية",
+        "serial": "رقم تسلسلي",
+        "batch": "دفعة"
+      },
+      "purchasePriceLabel": "سعر الشراء",
+      "salePriceLabel": "سعر البيع",
+      "reorderThresholdLabel": "حد إعادة الطلب",
+      "barcodeLabel": "الباركود"
+    },
+    "detail": {
+      "fallbackName": "المنتج",
+      "loading": "جارٍ التحميل...",
+      "error": "تعذر تحميل المنتج",
+      "unit": "الوحدة",
+      "tracking": "التتبع",
+      "purchase": "الشراء",
+      "sale": "البيع",
+      "edit": "تعديل",
+      "changePrice": "تغيير السعر",
+      "editTitle": "تعديل المنتج",
+      "priceTitle": "تغيير السعر",
+      "newPurchasePrice": "سعر الشراء الجديد",
+      "newSalePrice": "سعر البيع الجديد",
+      "reason": "السبب",
+      "savePrice": "حفظ السعر"
+    },
+    "servicesTitle": "الخدمات والمورّدون",
+    "newSupplier": "مورّد جديد",
+    "emptyServices": "لم يتم العثور على خدمات",
+    "serviceColumn": "الخدمة",
+    "moduleColumn": "القسم",
+    "newSupplierTitle": "مورّد جديد",
+    "supplierName": "الاسم",
+    "supplierPhone": "الهاتف",
+    "supplierEmail": "البريد الإلكتروني",
+    "supplierAddress": "العنوان",
+    "supplierNotes": "الملاحظات",
+    "sku": "SKU",
+    "name": "الاسم",
+    "category": "الفئة",
+    "price": "السعر"
+  },
+  "inventory": {
+    "module": "المخزون",
+    "stockTitle": "أرصدة المخزون",
+    "movements": "الحركات",
+    "purchases": "المشتريات",
+    "adjustments": "التسويات",
+    "reservations": "الحجوزات",
+    "searchPlaceholder": "ابحث بالاسم أو SKU",
+    "loadFailed": "تعذر تحميل أرصدة المخزون",
+    "emptyStock": "لم يتم العثور على أرصدة",
+    "product": "المنتج",
+    "category": "الفئة",
+    "onHand": "في المخزون",
+    "reserved": "محجوز",
+    "available": "المتاح",
+    "backToStock": "العودة إلى الأرصدة",
+    "quantity": "الكمية",
+    "notes": "الملاحظة",
+    "reason": "السبب",
+    "direction": "الاتجاه",
+    "unitCost": "التكلفة",
+    "selectProduct": "اختر المنتج",
+    "threshold": "الحد الأدنى",
+    "status": "الحالة",
+    "statusLow": "مخزون منخفض",
+    "statusOk": "ضمن الطبيعي",
+    "errors": {
+      "generic": "تعذر تنفيذ العملية. تحقق من الاتصال ثم أعد المحاولة.",
+      "insufficientStock": "لا يوجد رصيد متاح كافٍ لهذه العملية.",
+      "stateConflict": "لا يمكن تنفيذ العملية في الحالة الحالية للسجل.",
+      "notFound": "السجل غير موجود.",
+      "validation": "يرجى مراجعة تعبئة الحقول.",
+      "permissionDenied": "ليست لديك الصلاحية لهذه العملية.",
+      "outboundUnavailable": "المنتج غير متاح حاليًا لعملية الخصم.",
+      "unavailable": "المنتج غير متاح حاليًا في المخزون.",
+      "quantityExceedsAvailable": "الكمية المطلوبة تتجاوز المتاح حاليًا. المتاح الآن: {{count}}."
+    },
+    "adjustmentsPage": {
+      "newTitle": "تسوية جديدة",
+      "directionIn": "إضافة",
+      "directionOut": "خصم",
+      "submit": "مراجعة وتطبيق",
+      "lastTitle": "التسوية رقم {{id}}",
+      "confirmTitle": "تأكيد التسوية",
+      "confirmMessage": "ستؤثر هذه التسوية على رصيد المخزون وستنشئ حركة مخزنية. هل تريد المتابعة؟",
+      "applying": "جارٍ التطبيق...",
+      "apply": "تطبيق"
+    },
+    "movementsPage": {
+      "searchPlaceholder": "ابحث عن منتج للاختيار",
+      "chooseProduct": "اختر منتجًا لعرض الحركات.",
+      "loadFailed": "تعذر تحميل الحركات",
+      "empty": "لا توجد حركات لهذا المنتج بعد",
+      "columns": {
+        "type": "النوع",
+        "source": "المصدر",
+        "user": "المستخدم",
+        "date": "التاريخ"
+      },
+      "types": {
+        "purchase_in": "إضافة مشتريات",
+        "adjustment_in": "تسوية +",
+        "adjustment_out": "تسوية -",
+        "reservation_consume": "استهلاك حجز"
+      }
+    },
+    "purchasesPage": {
+      "createdMessage": "تم إنشاء المشتريات رقم {{id}}. يمكنك الآن استلامها إلى المخزون.",
+      "receivedMessage": "تم استلام المشتريات رقم {{id}} وتم تحديث الأرصدة.",
+      "createTitle": "إنشاء مشتريات",
+      "supplierId": "معرّف المورّد",
+      "unitCostPerItem": "تكلفة الوحدة",
+      "createSubmit": "إنشاء المشتريات",
+      "receiveTitle": "الاستلام",
+      "purchaseId": "معرّف المشتريات",
+      "receiveSubmit": "استلام إلى المخزون",
+      "lastTitle": "المشتريات رقم {{id}}",
+      "emptyLines": "لم يتم العثور على بنود المشتريات",
+      "received": "المستلم"
+    },
+    "reservationsPage": {
+      "warning": "ما زال إنشاء الحجوزات يدويًا متاحًا للإدارة والمراجعة، لكنه أصبح الآن يراعي الرصيد المتاح الفعلي أيضًا.",
+      "createTitle": "إنشاء حجز",
+      "sourceType": "نوع المصدر",
+      "sourceId": "معرّف المصدر",
+      "createSubmit": "إنشاء الحجز",
+      "actionsTitle": "إجراءات الحجز",
+      "consumeId": "معرّف الحجز للاستهلاك",
+      "consumeSubmit": "استهلاك الحجز",
+      "releaseId": "معرّف الحجز للتحرير",
+      "releaseSubmit": "تحرير الحجز",
+      "lastTitle": "آخر حجز رقم {{id}}",
+      "sourceLabel": "المصدر"
+    }
+  },
+  "settings": {
+    "eyebrow": "الإعدادات",
+    "title": "مركز إعدادات النظام",
+    "back": "إلى الإعدادات",
+    "roles": {
+      "OWNER_ADMIN": "المالك / المدير",
+      "AI_ASSISTANT": "مساعد الذكاء الاصطناعي"
+    },
+    "modules": {
+      "auth": "المصادقة",
+      "crm": "CRM",
+      "catalog": "الكتالوج",
+      "inventory": "المخزون",
+      "sales": "الكاشير",
+      "finance": "المالية",
+      "repair": "الصيانة",
+      "creative": "التصميم والطباعة",
+      "projects": "المشاريع",
+      "reports": "التقارير",
+      "events": "الأحداث",
+      "integrations": "التكاملات"
+    },
+    "appearance": {
+      "languageNotes": {
+        "ru": "لغة العمل الأساسية للواجهة.",
+        "ar": "مهيأ بالكامل للواجهة العربية."
+      },
+      "themeNotes": {
+        "light": "ثيم نهاري نظيف بتباين هادئ.",
+        "night": "ثيم داكن مريح للعمل لفترات طويلة.",
+        "ice": "نمط فاتح بارد للوحات العمل الدقيقة.",
+        "custom": "ثيم متكيف يعتمد على لوحة الألوان المختارة."
+      },
+      "accentNotes": {
+        "blue": "خيار مؤسسي عام ومتوازن.",
+        "gold": "لمسة دافئة مناسبة للعرض والمبيعات.",
+        "red": "طابع حيوي للمبيعات السريعة.",
+        "emerald": "لون تقني منعش للخدمة والمخزون.",
+        "violet": "تباين أكثر هدوءًا ولمسة أكثر فخامة."
+      }
+    },
+    "page": {
+      "heroEyebrow": "لوحة التهيئة",
+      "heroText": "هنا تجد إعدادات المظهر واللغة ولوحات الألوان والخيارات العامة التي تساعد على جعل الواجهة أكثر تماسكًا ووضوحًا.",
+      "badges": {
+        "language": "اللغة: {{value}}",
+        "theme": "الثيم: {{value}}",
+        "accent": "اللوحة: {{value}}",
+        "demoMode": "وضع البيانات التجريبية نشط"
+      },
+      "overview": {
+        "policies": "سياسات النظام النشطة",
+        "demoSets": "حزم البيانات التجريبية",
+        "modules": "الوحدات ذات الإعدادات",
+        "scenarios": "سيناريوهات التحقق"
+      },
+      "appearanceTitle": "الثيم والبيئة اللغوية",
+      "appearanceText": "أصبح الثيم الداكن أكثر هدوءًا، كما أن لوحة الألوان تضبط الواجهة كلها بسلاسة وفق اللون المختار.",
+      "themeActive": "نشط",
+      "languageSelected": "محدد",
+      "accentTitle": "لوحة الألوان المخصصة",
+      "accentText": "اختر اللون الأساسي ليتم ضبط الأزرار والروابط والبطاقات والوهج الخلفي تلقائيًا.",
+      "workspaceTitle": "إعدادات بيئة العمل التشغيلية",
+      "workspaceText": "خيارات محلية يسهل تفعيلها أو إيقافها أثناء تطوير الواجهات والوحدات الداخلية.",
+      "modulesTitle": "إعدادات الوحدات وسياسات العرض التجريبية",
+      "modulesText": "تساعدك الكتل التالية على تطوير الواجهة حتى في الأماكن التي ما زالت منطقية العمل فيها قيد التوسع.",
+      "demoTitle": "حزم بيانات تجريبية لتطوير النظام",
+      "demoText": "أضفنا مجموعات اختبار صغيرة لتطوير القوائم والتفاصيل والجداول والبطاقات دون انتظار العمليات الحقيقية.",
+      "quickLinksTitle": "روابط سريعة",
+      "quickLinksText": "أهم صفحات الإعدادات والأقسام المرتبطة بها داخل النظام."
+    },
+    "workspace": {
+      "compactSidebar": {
+        "label": "وضع الشريط الجانبي المضغوط",
+        "note": "يخفف الوزن البصري للتنقل في الشاشات العملية المزدحمة."
+      },
+      "showTicker": {
+        "label": "إظهار شريط الإشعارات",
+        "note": "مفيد عند اختبار سيل الأحداث وأولوية التنبيهات."
+      },
+      "autoRefresh": {
+        "label": "التحديث التلقائي للبطاقات",
+        "note": "مفيد للوحة المعلومات والطوابير والمخزون والمبيعات المباشرة."
+      },
+      "quickActions": {
+        "label": "الإجراءات السريعة في الصفحات الأساسية",
+        "note": "مناسب لـ CRM والصيانة والمخزون والكاشير والبطاقات المالية."
+      }
+    },
+    "domains": {
+      "notifications": {
+        "title": "الإشعارات والأتمتة",
+        "items": {
+          "threshold": {
+            "label": "حد المخزون المنخفض",
+            "value": "7 وحدات"
+          },
+          "alerts": {
+            "label": "التنبيهات الحرجة",
+            "value": "Telegram + الشريط الداخلي"
+          },
+          "ticker": {
+            "label": "شريط الأحداث",
+            "value": "تحديث كل 30 ثانية"
+          },
+          "tasks": {
+            "label": "الإنشاء التلقائي للمهام",
+            "value": "مفعل للصيانة والمشاريع"
+          }
+        }
+      },
+      "crm": {
+        "title": "CRM والعملاء",
+        "items": {
+          "code": {
+            "label": "كود العميل",
+            "value": "صيغة تلقائية CUST-####"
+          },
+          "channels": {
+            "label": "قنوات التواصل الأساسية",
+            "value": "الهاتف وWhatsApp وTelegram"
+          },
+          "photos": {
+            "label": "صورة العميل",
+            "value": "حتى 4 ميغابايت للصورة"
+          },
+          "freeze": {
+            "label": "حالة التجميد",
+            "value": "متاحة لمديري CRM"
+          }
+        }
+      },
+      "inventory": {
+        "title": "المخزون والصيانة",
+        "items": {
+          "reservation": {
+            "label": "حجز المنتجات",
+            "value": "72 ساعة للطلبات النشطة"
+          },
+          "serials": {
+            "label": "التحكم في الأرقام التسلسلية",
+            "value": "مفعل للأجهزة والملحقات"
+          },
+          "repairFlow": {
+            "label": "مسار الصيانة",
+            "value": "استلام -> تشخيص -> تنفيذ -> تسليم"
+          },
+          "partsWriteOff": {
+            "label": "استهلاك قطع الغيار",
+            "value": "بعد انتقال أمر الصيانة إلى المرحلة النهائية"
+          }
+        }
+      },
+      "operations": {
+        "title": "المبيعات والمالية والأمان",
+        "items": {
+          "draftWindow": {
+            "label": "مدة مسودة البيع",
+            "value": "24 ساعة"
+          },
+          "discount": {
+            "label": "أقصى خصم",
+            "value": "يعتمد على دور المستخدم"
+          },
+          "shiftClosing": {
+            "label": "إغلاق الوردية",
+            "value": "إلزامي قبل 23:30"
+          },
+          "backups": {
+            "label": "النسخ الاحتياطية",
+            "value": "الاحتفاظ لمدة 14 يومًا"
+          }
+        }
+      }
+    },
+    "demo": {
+      "products": {
+        "title": "المنتجات",
+        "value": "6 عناصر",
+        "text": "ملحقات وكابلات ومكونات مع الأسعار والباركود والأرصدة."
+      },
+      "finance": {
+        "title": "المستندات المالية",
+        "value": "3 فواتير",
+        "text": "مجموعة صغيرة من draft/approved/voided لاختبار القوائم والتفاصيل."
+      },
+      "orders": {
+        "title": "الطلبات",
+        "value": "2 صيانة",
+        "text": "طلبان تجريبيان مع الأجهزة والحالات والملاحظات لاختبار الواجهة."
+      },
+      "customers": {
+        "title": "العملاء",
+        "value": "بدون تعديل",
+        "text": "يتم استخدام العملاء النشطين الموجودين بالفعل في قاعدة البيانات لسيناريوهات العرض."
+      }
+    },
+    "links": {
+      "profile": {
+        "title": "ملفي الشخصي",
+        "description": "عدّل الاسم واسم الدخول والصورة وكلمة المرور وراجع سجل نشاطك الشخصي."
+      },
+      "payments": {
+        "title": "إعدادات الدفع",
+        "description": "افتح وسائل الدفع والخيارات المالية التي تؤثر في المبيعات والاسترجاع."
+      },
+      "accounts": {
+        "title": "الحسابات النظامية",
+        "description": "انتقل إلى الحسابات والصناديق والعناصر المالية الخاصة بالنظام."
+      },
+      "users": {
+        "title": "إدارة المستخدمين",
+        "description": "قسم مستقل للمستخدمين والأدوار والصلاحيات بعيدًا عن الملف الشخصي."
+      }
+    },
+    "profile": {
+      "title": "ملفي الشخصي",
+      "loading": "جارٍ تحميل الملف الشخصي...",
+      "error": "تعذر تحميل بيانات الملف الشخصي.",
+      "accountEyebrow": "حسابك",
+      "lastLogin": "آخر تسجيل دخول",
+      "buttons": {
+        "addPhoto": "إضافة صورة",
+        "changePhoto": "تغيير الصورة",
+        "removePhoto": "حذف الصورة",
+        "save": "حفظ الملف الشخصي"
+      },
+      "facts": {
+        "role": "الدور",
+        "status": "الحالة",
+        "lastLogin": "آخر تسجيل دخول",
+        "permissions": "عدد الصلاحيات"
+      },
+      "basicTitle": "البيانات الأساسية",
+      "basicText": "هنا يمكنك تحديث الاسم واسم الدخول والصورة المستخدمة في النظام.",
+      "securityTitle": "الأمان",
+      "securityText": "إذا أردت تغيير كلمة المرور، أدخل الحالية ثم حدد كلمة المرور الجديدة.",
+      "historyTitle": "سجل النشاط",
+      "historyText": "أحدث الإجراءات المرتبطة بحسابك داخل النظام.",
+      "historyEmpty": "سجل النشاط فارغ حاليًا.",
+      "fields": {
+        "username": "اسم الدخول",
+        "displayName": "الاسم المعروض",
+        "currentPassword": "كلمة المرور الحالية",
+        "newPassword": "كلمة المرور الجديدة"
+      },
+      "success": "تم تحديث الملف الشخصي بنجاح.",
+      "status": {
+        "active": "نشط",
+        "locked": "محظور",
+        "disabled": "موقوف"
+      },
+      "errors": {
+        "usernameExists": "يوجد مستخدم بهذا الاسم بالفعل.",
+        "currentPasswordRequired": "أدخل كلمة المرور الحالية لتغيير كلمة المرور.",
+        "currentPasswordInvalid": "كلمة المرور الحالية غير صحيحة.",
+        "invalidImage": "يرجى رفع صورة ملف شخصي صحيحة.",
+        "updateFailed": "تعذر تحديث الملف الشخصي. تحقق من البيانات المدخلة.",
+        "onlyImages": "يمكن رفع الصور فقط.",
+        "imageTooLarge": "يجب ألا يتجاوز حجم الصورة 4 ميغابايت.",
+        "fileReadFailed": "تعذر قراءة الصورة المختارة.",
+        "required": "اسم الدخول والاسم المعروض مطلوبان.",
+        "newPasswordMin": "يجب أن تتكون كلمة المرور الجديدة من 8 أحرف على الأقل."
+      },
+      "activityLabels": {
+        "authLogin": "تسجيل الدخول إلى النظام",
+        "authLogout": "تسجيل الخروج من النظام",
+        "authProfileUpdate": "تحديث الملف الشخصي",
+        "authUserCreate": "إنشاء مستخدم",
+        "authUserUpdate": "تعديل مستخدم",
+        "authUserDelete": "إيقاف مستخدم",
+        "authUserPermissionsUpdate": "تعديل الصلاحيات",
+        "authUserPermissionsReset": "إعادة صلاحيات الدور"
+      },
+      "activityFields": {
+        "module": "القسم",
+        "date": "التاريخ",
+        "ip": "IP"
+      }
+    },
+    "users": {
+      "title": "إدارة المستخدمين",
+      "addUser": "إضافة مستخدم",
+      "heroEyebrow": "الوصول والأدوار",
+      "heroTitle": "الفريق وصلاحيات الوصول",
+      "heroText": "هنا تجد مستخدمي النظام وأدوارهم وصلاحياتهم الفردية. تم تمييز حسابك الشخصي بشكل مستقل ويقودك مباشرة إلى ملفك الشخصي.",
+      "myProfile": "ملفي الشخصي",
+      "metrics": {
+        "totalUsers": "إجمالي المستخدمين",
+        "activeUsers": "النشطون",
+        "lockedUsers": "المحظورون",
+        "disabledUsers": "الموقوفون",
+        "roles": "الأدوار",
+        "permissions": "الصلاحيات"
+      },
+      "panels": {
+        "usersTitle": "المستخدمون",
+        "usersText": "قائمة كل الحسابات مع الإجراءات السريعة الخاصة بها.",
+        "rolesTitle": "الأدوار",
+        "rolesText": "الأدوار الأساسية التي تبنى عليها صلاحيات المستخدمين.",
+        "permissionsTitle": "الصلاحيات",
+        "permissionsText": "الدليل الكامل للصلاحيات المتاحة داخل النظام."
+      },
+      "empty": {
+        "users": "لم يتم العثور على مستخدمين",
+        "roles": "لم يتم العثور على أدوار",
+        "permissions": "لم يتم العثور على صلاحيات"
+      },
+      "columns": {
+        "user": "المستخدم",
+        "role": "الدور",
+        "status": "الحالة",
+        "lastLogin": "آخر تسجيل دخول",
+        "code": "الكود",
+        "name": "الاسم",
+        "module": "القسم"
+      },
+      "badges": {
+        "self": "أنت"
+      },
+      "actions": {
+        "openProfile": "فتح ملفي الشخصي",
+        "editUser": "تعديل المستخدم",
+        "managePermissions": "الصلاحيات",
+        "deleteUser": "حذف المستخدم",
+        "restoreRolePermissions": "استعادة صلاحيات الدور",
+        "savePermissions": "حفظ الصلاحيات"
+      },
+      "preview": {
+        "eyebrow": "بطاقة المستخدم",
+        "newUser": "مستخدم جديد",
+        "usernamePlaceholder": "سيظهر اسم الدخول هنا",
+        "rolePlaceholder": "لم يتم اختيار الدور بعد"
+      },
+      "buttons": {
+        "addPhoto": "إضافة صورة",
+        "changePhoto": "تغيير الصورة",
+        "removePhoto": "حذف الصورة",
+        "saveUser": "حفظ المستخدم"
+      },
+      "modals": {
+        "createTitle": "مستخدم جديد",
+        "editTitle": "تعديل المستخدم",
+        "permissionsTitle": "صلاحيات المستخدم"
+      },
+      "fields": {
+        "username": "اسم الدخول",
+        "displayName": "الاسم المعروض",
+        "password": "كلمة المرور",
+        "newPassword": "كلمة المرور الجديدة",
+        "passwordHint": "اتركه فارغًا إذا لم ترغب بتغيير كلمة المرور",
+        "role": "الدور",
+        "selectRole": "اختر الدور",
+        "status": "الحالة",
+        "maxDiscount": "أقصى خصم %",
+        "resetPermissionsToRole": "إعادة صلاحيات المستخدم إلى إعدادات الدور"
+      },
+      "status": {
+        "active": "نشط",
+        "disabled": "موقوف",
+        "locked": "محظور"
+      },
+      "roleState": {
+        "active": "نشط",
+        "inactive": "موقوف"
+      },
+      "confirmDelete": {
+        "title": "حذف المستخدم",
+        "message": "هل تريد حذف {{username}}؟ سيتم إيقاف الحساب وإنهاء الجلسات النشطة.",
+        "fallbackUser": "هذا المستخدم",
+        "confirmLabel": "حذف"
+      },
+      "errors": {
+        "permissionsUpdateFailed": "تعذر تحديث الصلاحيات.",
+        "permissionsResetFailed": "تعذر استعادة صلاحيات الدور.",
+        "usernameExists": "يوجد مستخدم بهذا الاسم بالفعل.",
+        "cannotDisableSelf": "لا يمكنك إيقاف أو حظر حسابك الشخصي.",
+        "roleNotFound": "الدور المحدد غير متاح.",
+        "invalidImage": "يرجى رفع صورة مستخدم صحيحة.",
+        "saveFailed": "تعذر حفظ المستخدم. تحقق من الحقول ثم حاول مرة أخرى.",
+        "onlyImages": "يمكن رفع الصور فقط.",
+        "imageTooLarge": "يجب ألا يتجاوز حجم الصورة 4 ميغابايت.",
+        "fileReadFailed": "تعذر قراءة الصورة المختارة.",
+        "required": "اسم الدخول والاسم والدور حقول مطلوبة.",
+        "passwordMin": "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل.",
+        "newPasswordMin": "يجب أن تتكون كلمة المرور الجديدة من 8 أحرف على الأقل."
+      }
+    }
+  },
+  "creative": {
+    "module": "التصميم والطباعة",
+    "jobsTitle": "الأعمال",
+    "newJob": "عمل جديد",
+    "jobTypesTitle": "أنواع الأعمال الإبداعية",
+    "vendorsTitle": "المنفذون",
+    "titleLabel": "الاسم",
+    "codeLabel": "الكود",
+    "defaultNameLabel": "الاسم الافتراضي",
+    "create": "إنشاء",
+    "loadJobsFailed": "تعذر تحميل الأعمال",
+    "noJobs": "لا توجد أعمال",
+    "noJobTypes": "لا توجد أنواع أعمال",
+    "noVendors": "لا يوجد منفذون",
+    "status": "الحالة",
+    "deadline": "الموعد",
+    "detail": {
+      "loading": "جارٍ تحميل العمل...",
+      "title": "العمل {{code}}",
+      "descriptionLabel": "الوصف",
+      "linesTitle": "البنود",
+      "noLines": "لم تتم إضافة بنود بعد",
+      "lineDescription": "وصف البند",
+      "quantity": "الكمية",
+      "unitPrice": "سعر الوحدة",
+      "addLine": "إضافة بند",
+      "vendorTasksTitle": "مهام المنفذين",
+      "noVendorTasks": "لا توجد مهام للمنفذين بعد",
+      "selectVendor": "اختر المنفذ",
+      "createVendorTask": "إنشاء مهمة للمنفذ",
+      "statusHistoryTitle": "سجل الحالات",
+      "noHistory": "سجل الحالات فارغ حاليًا",
+      "newStatus": "الحالة الجديدة",
+      "changeStatus": "تغيير الحالة",
+      "interfaceCreatedNote": "تم الإنشاء من الواجهة",
+      "interfaceChangedNote": "تم التغيير من الواجهة"
+    },
+    "statuses": {
+      "draft": "مسودة",
+      "pending": "قيد الانتظار",
+      "in_progress": "قيد التنفيذ",
+      "completed": "مكتمل",
+      "cancelled": "ملغي"
+    }
+  },
+  "events": {
+    "module": "الأحداث",
+    "title": "شريط الأحداث",
+    "summaryTitle": "التكاملات والإشعارات",
+    "summaryText": "هنا تظهر أحداث النظام وحالة عمليات التسليم الخارجية.",
+    "unavailable": "شريط الأحداث غير متاح مؤقتًا",
+    "empty": "لا توجد أحداث حاليًا",
+    "event": "الحدث",
+    "moduleLabel": "القسم",
+    "time": "الوقت"
+  },
+  "integrations": {
+    "module": "التكاملات",
+    "title": "حالة التكاملات",
+    "servicesTitle": "حالة الخدمات",
+    "outboxTitle": "طابور webhook",
+    "servicesLoadFailed": "تعذر تحميل حالة التكاملات",
+    "noServices": "لا توجد خدمات",
+    "outboxLoadFailed": "تعذر تحميل طابور webhook",
+    "noOutbox": "لا توجد مهام webhook",
+    "service": "الخدمة",
+    "status": "الحالة",
+    "target": "الهدف",
+    "event": "الحدث",
+    "statuses": {
+      "ok": "جاهز",
+      "configured": "مهيأ",
+      "pending": "قيد الانتظار",
+      "processing": "قيد المعالجة",
+      "sent": "تم الإرسال",
+      "failed": "فشل",
+      "skipped": "تم التخطي"
+    }
+  },
+  "reports": {
+    "module": "التقارير",
+    "title": "التقارير",
+    "refresh": "تحديث",
+    "metric": "المؤشر",
+    "value": "القيمة",
+    "noData": "لا توجد بيانات للتقرير",
+    "loadFailed": "تعذر تحميل التقرير: {{title}}",
+    "names": {
+      "sales": "المبيعات",
+      "inventory": "المخزون",
+      "finance": "المالية",
+      "repair": "الصيانة",
+      "projects": "المشاريع",
+      "creative": "التصميم والطباعة"
     }
   }
 }

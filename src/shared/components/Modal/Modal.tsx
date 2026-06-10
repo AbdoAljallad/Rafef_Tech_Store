@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { IconButton } from '../../ui/IconButton';
 
 type ModalProps = {
@@ -10,6 +11,8 @@ type ModalProps = {
 };
 
 export function Modal({ title, isOpen, onClose, children }: ModalProps) {
+  const { t } = useTranslation('common');
+
   if (!isOpen) {
     return null;
   }
@@ -19,7 +22,7 @@ export function Modal({ title, isOpen, onClose, children }: ModalProps) {
       <section className="modal-panel" role="dialog" aria-modal="true" aria-label={title}>
         <header className="modal-header">
           <h2>{title}</h2>
-          <IconButton label="Закрыть" icon={<X size={18} />} onClick={onClose} />
+          <IconButton label={t('actions.close')} icon={<X size={18} />} onClick={onClose} />
         </header>
         {children}
       </section>

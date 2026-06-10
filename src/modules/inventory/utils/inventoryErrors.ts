@@ -1,29 +1,30 @@
+import i18n from '../../../shared/localization/i18n';
 import { isApiError } from '../../../shared/api/apiErrors';
 
 export function inventoryErrorMessage(error: unknown) {
   if (!isApiError(error)) {
-    return 'Не удалось выполнить операцию. Проверьте соединение и попробуйте снова.';
+    return i18n.t('inventory.errors.generic', { ns: 'app' });
   }
 
   if (error.code === 'INSUFFICIENT_STOCK') {
-    return 'Недостаточно доступного остатка для операции.';
+    return i18n.t('inventory.errors.insufficientStock', { ns: 'app' });
   }
 
   if (error.code === 'STATE_CONFLICT') {
-    return 'Операция невозможна для текущего состояния записи.';
+    return i18n.t('inventory.errors.stateConflict', { ns: 'app' });
   }
 
   if (error.code === 'NOT_FOUND') {
-    return 'Запись не найдена.';
+    return i18n.t('inventory.errors.notFound', { ns: 'app' });
   }
 
   if (error.code === 'VALIDATION_ERROR') {
-    return 'Проверьте заполнение формы.';
+    return i18n.t('inventory.errors.validation', { ns: 'app' });
   }
 
   if (error.status === 403) {
-    return 'Недостаточно прав для операции.';
+    return i18n.t('inventory.errors.permissionDenied', { ns: 'app' });
   }
 
-  return error.message || 'Не удалось выполнить операцию.';
+  return error.message || i18n.t('inventory.errors.generic', { ns: 'app' });
 }

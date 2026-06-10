@@ -11,7 +11,16 @@ export type Product = {
   current_sale_price: string;
   reorder_threshold: string;
   category_name: string;
+  category_code?: string;
+  show_in_sales?: number;
+  show_in_repair?: number;
+  show_in_projects?: number;
+  show_in_creative?: number;
   unit_name_ru: string;
+  primary_barcode?: string | null;
+  quantity_on_hand?: string;
+  quantity_reserved?: string;
+  quantity_available?: string;
 };
 export type Service = { id: number; code: string; default_name: string; module: string; default_price: string; category_name: string };
 export type ProductRequest = {

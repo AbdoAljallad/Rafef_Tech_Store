@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { catalogApi } from '../../modules/catalog/api/catalog.api';
 import { inventoryApi } from '../../modules/inventory/api/inventory.api';
@@ -10,23 +11,13 @@ import { SearchInput } from '../../shared/components/SearchInput/SearchInput';
 import { Badge } from '../../shared/ui/Badge';
 import { Select } from '../../shared/ui/Select';
 
-const movementLabels: Record<StockMovement['movement_type'], string> = {
-  purchase_in: 'Приход закупки',
-  adjustment_in: 'Корректировка +',
-  adjustment_out: 'Корректировка -',
-  reservation_consume: 'Списание резерва',
-};
-
-function signedQuantity(movement: StockMovement) {
-  const sign = movement.movement_type === 'adjustment_out' || movement.movement_type === 'reservation_consume' ? '-' : '+';
-  return `${sign}${Number(movement.quantity).toLocaleString('ru-RU', { maximumFractionDigits: 4 })}`;
-}
-
-function dateTime(value: string) {
-  return new Date(value).toLocaleString('ru-RU');
+function movementLabel(t: (key: string) => string, type: StockMovement['movement_type']) {
+  return t(`inventory.movementsPage.types.${type}`);
 }
 
 export function InventoryMovementsPage() {
+  const { t, i18n } = useTranslation('app');
+  const locale = i18n.resolvedLanguage === 'ar' ? 'ar-EG' : 'ru-RU';
   const [search, setSearch] = useState('');
   const [productId, setProductId] = useState('');
   const productsQuery = useQuery({ queryKey: ['products', search], queryFn: () => catalogApi.listProducts(search) });
@@ -40,16 +31,16 @@ export function InventoryMovementsPage() {
     <>
       <header className="page-header">
         <div>
-          <p className="eyebrow">Inventory</p>
-          <h1>История движений товара</h1>
+          <p className="eyebrow">{t('inventory.module')}</p>
+          <h1>{t('inventory.movements')}</h1>
         </div>
-        <Link to="/inventory/stock">К остаткам</Link>
+        <Link to="/inventory/stock">{t('inventory.backToStock')}</Link>
       </header>
 
       <section className="page-toolbar">
-        <SearchInput placeholder="Поиск товара для выбора" value={search} onChange={(event) => setSearch(event.target.value)} />
-        <Select label="Товар" value={productId} onChange={(event) => setProductId(event.target.value)}>
-          <option value="">Выберите товар</option>
+        <SearchInput placeholder={t('inventory.movementsPage.searchPlaceholder')} value={search} onChange={(event) => setSearch(event.target.value)} />
+        <Select label={t('inventory.product')} value={productId} onChange={(event) => setProductId(event.target.value)}>
+          <option value="">{t('inventory.selectProduct')}</option>
           {(productsQuery.data?.items ?? []).map((product) => (
             <option key={product.id} value={product.id}>
               {product.sku} - {product.default_name}
@@ -58,22 +49,33 @@ export function InventoryMovementsPage() {
         </Select>
       </section>
 
-      {!productId ? <section className="panel">Выберите товар, чтобы посмотреть движения.</section> : null}
+      {!productId ? <section className="panel">{t('inventory.movementsPage.chooseProduct')}</section> : null}
 
       {productId ? (
         <DataTable
           rows={movementsQuery.data?.items ?? []}
           isLoading={movementsQuery.isLoading}
-          emptyText={movementsQuery.isError ? 'Не удалось загрузить движения' : 'Движений по товару пока нет'}
+          emptyText={movementsQuery.isError ? t('inventory.movementsPage.loadFailed') : t('inventory.movementsPage.empty')}
           getRowKey={(movement) => movement.id}
           columns={[
-            { key: 'type', header: 'Тип', render: (movement) => <Badge tone="info">{movementLabels[movement.movement_type]}</Badge> },
-            { key: 'quantity', header: 'Количество', render: signedQuantity },
-            { key: 'cost', header: 'Себестоимость', render: (movement) => (movement.unit_cost ? <MoneyDisplay value={movement.unit_cost} /> : '-') },
-            { key: 'source', header: 'Источник', render: (movement) => `${movement.source_type} #${movement.source_id}` },
-            { key: 'user', header: 'Пользователь', render: (movement) => movement.created_by_user_id ?? '-' },
-            { key: 'date', header: 'Дата', render: (movement) => dateTime(movement.created_at) },
-            { key: 'note', header: 'Примечание', render: (movement) => movement.note || '-' },
+            { key: 'type', header: t('inventory.movementsPage.columns.type'), render: (movement) => <Badge tone="info">{movementLabel(t, movement.movement_type)}</Badge> },
+            {
+              key: 'quantity',
+              header: t('inventory.quantity'),
+              render: (movement) => {
+                const sign = movement.movement_type === 'adjustment_out' || movement.movement_type === 'reservation_consume' ? '-' : '+';
+                return `${sign}${Number(movement.quantity).toLocaleString(locale, { maximumFractionDigits: 4 })}`;
+              },
+            },
+            {
+              key: 'cost',
+              header: t('inventory.unitCost'),
+              render: (movement) => (movement.unit_cost ? <MoneyDisplay value={movement.unit_cost} /> : '-'),
+            },
+            { key: 'source', header: t('inventory.movementsPage.columns.source'), render: (movement) => `${movement.source_type} #${movement.source_id}` },
+            { key: 'user', header: t('inventory.movementsPage.columns.user'), render: (movement) => movement.created_by_user_id ?? '-' },
+            { key: 'date', header: t('inventory.movementsPage.columns.date'), render: (movement) => new Date(movement.created_at).toLocaleString(locale) },
+            { key: 'note', header: t('inventory.notes'), render: (movement) => movement.note || '-' },
           ]}
         />
       ) : null}

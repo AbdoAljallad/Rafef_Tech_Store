@@ -1,6 +1,7 @@
 import { useEffect, type MouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { IconButton } from '../../ui/IconButton';
 
 type FormDrawerProps = {
@@ -11,6 +12,8 @@ type FormDrawerProps = {
 };
 
 export function FormDrawer({ title, isOpen, onClose, children }: FormDrawerProps) {
+  const { t } = useTranslation('common');
+
   useEffect(() => {
     if (!isOpen) {
       return undefined;
@@ -104,10 +107,6 @@ export function FormDrawer({ title, isOpen, onClose, children }: FormDrawerProps
           margin: 0.2rem 0 0;
         }
 
-        .form-drawer-centered-panel .drawer-section-label {
-          font-size: 0.76rem;
-        }
-
         .form-drawer-centered-panel > :not(.drawer-header) {
           padding: 1.15rem 1.25rem 1.25rem;
         }
@@ -125,7 +124,7 @@ export function FormDrawer({ title, isOpen, onClose, children }: FormDrawerProps
         }
       `}</style>
       <div className="form-drawer-centered-backdrop" role="presentation">
-        <button className="form-drawer-centered-scrim" type="button" aria-label="Закрыть окно" onClick={handleBackdropClick} />
+        <button className="form-drawer-centered-scrim" type="button" aria-label={t('actions.close')} onClick={handleBackdropClick} />
         <aside
           className="form-drawer form-drawer-centered-panel"
           role="dialog"
@@ -135,10 +134,9 @@ export function FormDrawer({ title, isOpen, onClose, children }: FormDrawerProps
         >
           <header className="drawer-header">
             <div>
-              <span className="tech-pill drawer-section-label">CRM</span>
               <h2>{title}</h2>
             </div>
-            <IconButton label="Закрыть" icon={<X size={18} />} onClick={onClose} />
+            <IconButton label={t('actions.close')} icon={<X size={18} />} onClick={onClose} />
           </header>
           {children}
         </aside>

@@ -1,5 +1,6 @@
 import { type ChangeEvent, type FormEvent, useMemo, useRef, useState } from 'react';
 import { useMutation, useQueries, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Edit2, ImageMinus, ImagePlus, Plus, RotateCcw, ShieldCheck, Trash2, UserRound } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { adminApi } from '../../modules/admin/api/admin.api';
@@ -109,27 +110,41 @@ function readFileAsDataUrl(file: File) {
   });
 }
 
-function formatDate(value: string | null) {
+function formatDate(
+  value: string | null,
+  locale: string,
+  t: (key: string, options?: Record<string, unknown>) => string,
+) {
   if (!value) {
-    return 'Нет данных';
+    return t('empty', { ns: 'common' });
   }
 
-  return new Date(value).toLocaleString('ru-RU');
+  return new Date(value).toLocaleString(locale);
 }
 
-function formatUserStatus(status: UserStatus) {
-  if (status === 'active') {
-    return 'Активен';
+function formatUserStatus(status: UserStatus, t: (key: string, options?: Record<string, unknown>) => string) {
+  return t(`settings.users.status.${status}`, { ns: 'app' });
+}
+
+function getRoleLabel(
+  code: string | undefined,
+  fallback: string | undefined,
+  t: (key: string, options?: Record<string, unknown>) => string,
+) {
+  if (code) {
+    return t(`settings.roles.${code}`, { ns: 'app', defaultValue: fallback ?? code });
   }
 
-  if (status === 'locked') {
-    return 'Заблокирован';
-  }
+  return fallback ?? t('userCard.noRole', { ns: 'app' });
+}
 
-  return 'Отключён';
+function getModuleLabel(module: string, t: (key: string, options?: Record<string, unknown>) => string) {
+  return t(`settings.modules.${module}`, { ns: 'app', defaultValue: module });
 }
 
 export function SettingsUsersPage() {
+  const { t, i18n } = useTranslation(['app', 'common']);
+  const locale = i18n.language === 'ar' ? 'ar' : 'ru-RU';
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const currentUser = useAuthStore((state) => state.user);
@@ -222,7 +237,7 @@ export function SettingsUsersPage() {
       setSelectedPermissionIds(new Set());
       setPermissionError(null);
     },
-    onError: () => setPermissionError('Не удалось обновить права доступа.'),
+    onError: () => setPermissionError(t('settings.users.errors.permissionsUpdateFailed', { ns: 'app' })),
   });
 
   const resetPermissions = useMutation({
@@ -232,18 +247,18 @@ export function SettingsUsersPage() {
       setSelectedPermissionIds(new Set(response.user.permissionIds ?? []));
       setPermissionError(null);
     },
-    onError: () => setPermissionError('Не удалось восстановить права роли.'),
+    onError: () => setPermissionError(t('settings.users.errors.permissionsResetFailed', { ns: 'app' })),
   });
 
   function userErrorMessage(error: unknown) {
     if (isApiError(error)) {
-      if (error.code === 'USERNAME_ALREADY_EXISTS') return 'Пользователь с таким логином уже существует.';
-      if (error.code === 'CANNOT_DISABLE_SELF') return 'Нельзя отключить или заблокировать собственную учётную запись.';
-      if (error.code === 'ROLE_NOT_FOUND') return 'Выбранная роль недоступна.';
-      if (error.code === 'INVALID_IMAGE') return 'Загрузите корректное изображение пользователя.';
+      if (error.code === 'USERNAME_ALREADY_EXISTS') return t('settings.users.errors.usernameExists', { ns: 'app' });
+      if (error.code === 'CANNOT_DISABLE_SELF') return t('settings.users.errors.cannotDisableSelf', { ns: 'app' });
+      if (error.code === 'ROLE_NOT_FOUND') return t('settings.users.errors.roleNotFound', { ns: 'app' });
+      if (error.code === 'INVALID_IMAGE') return t('settings.users.errors.invalidImage', { ns: 'app' });
     }
 
-    return 'Не удалось сохранить пользователя. Проверьте поля и попробуйте снова.';
+    return t('settings.users.errors.saveFailed', { ns: 'app' });
   }
 
   function updateField<K extends keyof UserForm>(key: K, value: UserForm[K]) {
@@ -294,13 +309,13 @@ export function SettingsUsersPage() {
     }
 
     if (!file.type.startsWith('image/')) {
-      setFormError('Можно загружать только изображения.');
+      setFormError(t('settings.users.errors.onlyImages', { ns: 'app' }));
       event.target.value = '';
       return;
     }
 
     if (file.size > 4 * 1024 * 1024) {
-      setFormError('Размер изображения не должен превышать 4 МБ.');
+      setFormError(t('settings.users.errors.imageTooLarge', { ns: 'app' }));
       event.target.value = '';
       return;
     }
@@ -310,7 +325,7 @@ export function SettingsUsersPage() {
       updateField('avatarUrl', imageData);
       setFormError(null);
     } catch {
-      setFormError('Не удалось прочитать выбранное изображение.');
+      setFormError(t('settings.users.errors.fileReadFailed', { ns: 'app' }));
     } finally {
       event.target.value = '';
     }
@@ -321,17 +336,17 @@ export function SettingsUsersPage() {
     setFormError(null);
 
     if (!form.username.trim() || !form.displayName.trim() || !form.roleId) {
-      setFormError('Логин, имя и роль обязательны.');
+      setFormError(t('settings.users.errors.required', { ns: 'app' }));
       return;
     }
 
     if (mode === 'create' && form.password.length < 8) {
-      setFormError('Пароль должен содержать минимум 8 символов.');
+      setFormError(t('settings.users.errors.passwordMin', { ns: 'app' }));
       return;
     }
 
     if (mode === 'edit' && form.password && form.password.length < 8) {
-      setFormError('Новый пароль должен содержать минимум 8 символов.');
+      setFormError(t('settings.users.errors.newPasswordMin', { ns: 'app' }));
       return;
     }
 
@@ -384,7 +399,8 @@ export function SettingsUsersPage() {
     });
   }
 
-  const userModalTitle = mode === 'create' ? 'Новый пользователь' : 'Редактировать пользователя';
+  const userModalTitle =
+    mode === 'create' ? t('settings.users.modals.createTitle', { ns: 'app' }) : t('settings.users.modals.editTitle', { ns: 'app' });
 
   return (
     <>
@@ -678,17 +694,17 @@ export function SettingsUsersPage() {
 
       <header className="page-header settings-users-header">
         <div>
-          <p className="eyebrow">Настройки</p>
-          <h1>Управление пользователями</h1>
+          <p className="eyebrow">{t('settings.eyebrow', { ns: 'app' })}</p>
+          <h1>{t('settings.users.title', { ns: 'app' })}</h1>
         </div>
         <div className="settings-users-actions">
           <Link className="ui-button secondary settings-return-link" to="/settings">
             <ArrowLeft size={16} />
-            <span>К настройкам</span>
+            <span>{t('settings.back', { ns: 'app' })}</span>
           </Link>
           {canManageUsers ? (
             <Button type="button" icon={<Plus size={18} />} onClick={openCreate}>
-              Добавить пользователя
+              {t('settings.users.addUser', { ns: 'app' })}
             </Button>
           ) : null}
         </div>
@@ -698,42 +714,42 @@ export function SettingsUsersPage() {
         <article className="settings-users-hero">
           <div className="settings-users-hero-top">
             <div className="settings-users-hero-copy">
-              <p className="eyebrow">Доступ и роли</p>
-              <h2>Команда и права доступа</h2>
-              <p>Здесь собраны пользователи системы, их роли и индивидуальные права. Ваш собственный аккаунт помечен отдельно и ведёт в личный профиль.</p>
+              <p className="eyebrow">{t('settings.users.heroEyebrow', { ns: 'app' })}</p>
+              <h2>{t('settings.users.heroTitle', { ns: 'app' })}</h2>
+              <p>{t('settings.users.heroText', { ns: 'app' })}</p>
             </div>
 
             <div className="settings-users-quicklinks">
               <Link className="ui-button secondary settings-return-link" to="/settings/profile">
                 <UserRound size={16} />
-                <span>Мой профиль</span>
+                <span>{t('settings.users.myProfile', { ns: 'app' })}</span>
               </Link>
             </div>
           </div>
 
           <div className="settings-users-metrics">
             <div className="settings-users-metric">
-              <span>Всего пользователей</span>
+              <span>{t('settings.users.metrics.totalUsers', { ns: 'app' })}</span>
               <strong>{stats.totalUsers}</strong>
             </div>
             <div className="settings-users-metric">
-              <span>Активных</span>
+              <span>{t('settings.users.metrics.activeUsers', { ns: 'app' })}</span>
               <strong>{stats.activeUsers}</strong>
             </div>
             <div className="settings-users-metric">
-              <span>Заблокированных</span>
+              <span>{t('settings.users.metrics.lockedUsers', { ns: 'app' })}</span>
               <strong>{stats.lockedUsers}</strong>
             </div>
             <div className="settings-users-metric">
-              <span>Отключённых</span>
+              <span>{t('settings.users.metrics.disabledUsers', { ns: 'app' })}</span>
               <strong>{stats.disabledUsers}</strong>
             </div>
             <div className="settings-users-metric">
-              <span>Ролей</span>
+              <span>{t('settings.users.metrics.roles', { ns: 'app' })}</span>
               <strong>{stats.totalRoles}</strong>
             </div>
             <div className="settings-users-metric">
-              <span>Прав доступа</span>
+              <span>{t('settings.users.metrics.permissions', { ns: 'app' })}</span>
               <strong>{stats.totalPermissions}</strong>
             </div>
           </div>
@@ -743,20 +759,20 @@ export function SettingsUsersPage() {
           <article className="panel">
             <div className="settings-users-panel-title">
               <div>
-                <h2>Пользователи</h2>
-                <p>Список всех учётных записей и быстрые действия по ним.</p>
+                <h2>{t('settings.users.panels.usersTitle', { ns: 'app' })}</h2>
+                <p>{t('settings.users.panels.usersText', { ns: 'app' })}</p>
               </div>
             </div>
 
             <DataTable
               rows={userRows}
               isLoading={users.isLoading}
-              emptyText="Пользователи не найдены"
+              emptyText={t('settings.users.empty.users', { ns: 'app' })}
               getRowKey={(u) => u.id}
               columns={[
                 {
                   key: 'user',
-                  header: 'Пользователь',
+                  header: t('settings.users.columns.user', { ns: 'app' }),
                   render: (u: AdminUser) => (
                     <div className="settings-user-table-cell">
                       <span className="settings-user-table-avatar" aria-hidden="true">
@@ -766,29 +782,59 @@ export function SettingsUsersPage() {
                       <div className="settings-user-table-copy">
                         <strong>
                           {u.display_name}
-                          {currentUser?.id === u.id ? <span className="settings-user-badge">Это вы</span> : null}
+                          {currentUser?.id === u.id ? <span className="settings-user-badge">{t('settings.users.badges.self', { ns: 'app' })}</span> : null}
                         </strong>
                         <div>{u.username}</div>
                       </div>
                     </div>
                   ),
                 },
-                { key: 'role', header: 'Роль', render: (u: AdminUser) => u.role_name || u.role_code },
-                { key: 'status', header: 'Статус', render: (u: AdminUser) => <span className="settings-users-status">{formatUserStatus(u.status)}</span> },
-                { key: 'login', header: 'Последний вход', render: (u: AdminUser) => formatDate(u.last_login_at) },
+                {
+                  key: 'role',
+                  header: t('settings.users.columns.role', { ns: 'app' }),
+                  render: (u: AdminUser) => getRoleLabel(u.role_code, u.role_name || u.role_code, t),
+                },
+                {
+                  key: 'status',
+                  header: t('settings.users.columns.status', { ns: 'app' }),
+                  render: (u: AdminUser) => <span className="settings-users-status">{formatUserStatus(u.status, t)}</span>,
+                },
+                {
+                  key: 'login',
+                  header: t('settings.users.columns.lastLogin', { ns: 'app' }),
+                  render: (u: AdminUser) => formatDate(u.last_login_at, locale, t),
+                },
                 {
                   key: 'actions',
                   header: '',
                   render: (u: AdminUser) => (
                     <div className="row-actions">
                       {currentUser?.id === u.id ? (
-                        <IconButton label="Открыть мой профиль" icon={<Edit2 size={16} />} onClick={() => navigate('/settings/profile')} />
+                        <IconButton
+                          label={t('settings.users.actions.openProfile', { ns: 'app' })}
+                          icon={<Edit2 size={16} />}
+                          onClick={() => navigate('/settings/profile')}
+                        />
                       ) : canManageUsers ? (
-                        <IconButton label="Редактировать пользователя" icon={<Edit2 size={16} />} onClick={() => openEdit(u)} />
+                        <IconButton
+                          label={t('settings.users.actions.editUser', { ns: 'app' })}
+                          icon={<Edit2 size={16} />}
+                          onClick={() => openEdit(u)}
+                        />
                       ) : null}
-                      {canManagePermissions ? <IconButton label="Права доступа" icon={<ShieldCheck size={16} />} onClick={() => void openPermissions(u)} /> : null}
+                      {canManagePermissions ? (
+                        <IconButton
+                          label={t('settings.users.actions.managePermissions', { ns: 'app' })}
+                          icon={<ShieldCheck size={16} />}
+                          onClick={() => void openPermissions(u)}
+                        />
+                      ) : null}
                       {canManageUsers && currentUser?.id !== u.id ? (
-                        <IconButton label="Удалить пользователя" icon={<Trash2 size={16} />} onClick={() => setDeleteUser(u)} />
+                        <IconButton
+                          label={t('settings.users.actions.deleteUser', { ns: 'app' })}
+                          icon={<Trash2 size={16} />}
+                          onClick={() => setDeleteUser(u)}
+                        />
                       ) : null}
                     </div>
                   ),
@@ -800,20 +846,28 @@ export function SettingsUsersPage() {
           <article className="panel">
             <div className="settings-users-panel-title">
               <div>
-                <h2>Роли</h2>
-                <p>Базовые роли, на которые опираются права пользователей.</p>
+                <h2>{t('settings.users.panels.rolesTitle', { ns: 'app' })}</h2>
+                <p>{t('settings.users.panels.rolesText', { ns: 'app' })}</p>
               </div>
             </div>
 
             <DataTable
               rows={roleRows}
               isLoading={roles.isLoading}
-              emptyText="Роли не найдены"
+              emptyText={t('settings.users.empty.roles', { ns: 'app' })}
               getRowKey={(r) => r.id}
               columns={[
-                { key: 'code', header: 'Код', render: (r: AdminRole) => r.code },
-                { key: 'name', header: 'Название', render: (r: AdminRole) => r.name_ru },
-                { key: 'status', header: 'Статус', render: (r: AdminRole) => (r.is_active ? 'Активна' : 'Отключена') },
+                { key: 'code', header: t('settings.users.columns.code', { ns: 'app' }), render: (r: AdminRole) => r.code },
+                {
+                  key: 'name',
+                  header: t('settings.users.columns.name', { ns: 'app' }),
+                  render: (r: AdminRole) => getRoleLabel(r.code, r.name_ru, t),
+                },
+                {
+                  key: 'status',
+                  header: t('settings.users.columns.status', { ns: 'app' }),
+                  render: (r: AdminRole) => (r.is_active ? t('settings.users.roleState.active', { ns: 'app' }) : t('settings.users.roleState.inactive', { ns: 'app' })),
+                },
               ]}
             />
           </article>
@@ -822,20 +876,24 @@ export function SettingsUsersPage() {
         <section className="panel">
           <div className="settings-users-panel-title">
             <div>
-              <h2>Права доступа</h2>
-              <p>Полный каталог разрешений, доступных в системе.</p>
+              <h2>{t('settings.users.panels.permissionsTitle', { ns: 'app' })}</h2>
+              <p>{t('settings.users.panels.permissionsText', { ns: 'app' })}</p>
             </div>
           </div>
 
           <DataTable
             rows={permissionRows}
             isLoading={permissions.isLoading}
-            emptyText="Права доступа не найдены"
+            emptyText={t('settings.users.empty.permissions', { ns: 'app' })}
             getRowKey={(p) => p.id}
             columns={[
-              { key: 'module', header: 'Модуль', render: (p: AdminPermission) => p.module },
-              { key: 'code', header: 'Код', render: (p: AdminPermission) => p.code },
-              { key: 'name', header: 'Название', render: (p: AdminPermission) => p.name_ru },
+              {
+                key: 'module',
+                header: t('settings.users.columns.module', { ns: 'app' }),
+                render: (p: AdminPermission) => getModuleLabel(p.module, t),
+              },
+              { key: 'code', header: t('settings.users.columns.code', { ns: 'app' }), render: (p: AdminPermission) => p.code },
+              { key: 'name', header: t('settings.users.columns.name', { ns: 'app' }), render: (p: AdminPermission) => p.name_ru || p.code },
             ]}
           />
         </section>
@@ -850,54 +908,80 @@ export function SettingsUsersPage() {
                 <img src={avatarPreview} alt="" />
               </div>
               <div className="settings-user-preview-copy">
-                <p className="eyebrow">Профиль пользователя</p>
-                <strong>{form.displayName || 'Новый пользователь'}</strong>
-                <small>{form.username || 'Логин будет показан здесь'}</small>
-                <small>{roleRows.find((role) => String(role.id) === form.roleId)?.name_ru ?? 'Роль ещё не выбрана'}</small>
+                <p className="eyebrow">{t('settings.users.preview.eyebrow', { ns: 'app' })}</p>
+                <strong>{form.displayName || t('settings.users.preview.newUser', { ns: 'app' })}</strong>
+                <small>{form.username || t('settings.users.preview.usernamePlaceholder', { ns: 'app' })}</small>
+                <small>
+                  {roleRows.find((role) => String(role.id) === form.roleId)
+                    ? getRoleLabel(roleRows.find((role) => String(role.id) === form.roleId)?.code, roleRows.find((role) => String(role.id) === form.roleId)?.name_ru, t)
+                    : t('settings.users.preview.rolePlaceholder', { ns: 'app' })}
+                </small>
               </div>
             </div>
 
             <div className="settings-user-avatar-actions">
               <input ref={avatarInputRef} type="file" accept="image/*" hidden onChange={(event) => void handleAvatarChange(event)} />
               <Button type="button" variant="secondary" icon={<ImagePlus size={16} />} onClick={() => avatarInputRef.current?.click()}>
-                {form.avatarUrl ? 'Изменить фото' : 'Добавить фото'}
+                {form.avatarUrl ? t('settings.users.buttons.changePhoto', { ns: 'app' }) : t('settings.users.buttons.addPhoto', { ns: 'app' })}
               </Button>
               {form.avatarUrl ? (
                 <Button type="button" variant="secondary" icon={<ImageMinus size={16} />} onClick={() => updateField('avatarUrl', null)}>
-                  Удалить фото
+                  {t('settings.users.buttons.removePhoto', { ns: 'app' })}
                 </Button>
               ) : null}
             </div>
           </div>
 
-          <Input label="Логин" name="username" value={form.username} onChange={(event) => updateField('username', event.target.value)} autoComplete="off" />
-          <Input label="Отображаемое имя" name="displayName" value={form.displayName} onChange={(event) => updateField('displayName', event.target.value)} autoComplete="off" />
           <Input
-            label={mode === 'create' ? 'Пароль' : 'Новый пароль'}
+            label={t('settings.users.fields.username', { ns: 'app' })}
+            name="username"
+            value={form.username}
+            onChange={(event) => updateField('username', event.target.value)}
+            autoComplete="off"
+          />
+          <Input
+            label={t('settings.users.fields.displayName', { ns: 'app' })}
+            name="displayName"
+            value={form.displayName}
+            onChange={(event) => updateField('displayName', event.target.value)}
+            autoComplete="off"
+          />
+          <Input
+            label={mode === 'create' ? t('settings.users.fields.password', { ns: 'app' }) : t('settings.users.fields.newPassword', { ns: 'app' })}
             name="password"
             type="password"
             value={form.password}
-            placeholder={mode === 'edit' ? 'Оставьте пустым, чтобы не менять пароль' : undefined}
+            placeholder={mode === 'edit' ? t('settings.users.fields.passwordHint', { ns: 'app' }) : undefined}
             onChange={(event) => updateField('password', event.target.value)}
             autoComplete="new-password"
           />
-          <Select label="Роль" name="roleId" value={form.roleId} onChange={(event) => updateField('roleId', event.target.value)}>
-            <option value="">Выберите роль</option>
+          <Select
+            label={t('settings.users.fields.role', { ns: 'app' })}
+            name="roleId"
+            value={form.roleId}
+            onChange={(event) => updateField('roleId', event.target.value)}
+          >
+            <option value="">{t('settings.users.fields.selectRole', { ns: 'app' })}</option>
             {roleRows
               .filter((role) => role.is_active)
               .map((role) => (
                 <option key={role.id} value={role.id}>
-                  {role.name_ru}
+                  {getRoleLabel(role.code, role.name_ru, t)}
                 </option>
               ))}
           </Select>
-          <Select label="Статус" name="status" value={form.status} onChange={(event) => updateField('status', event.target.value as UserStatus)}>
-            <option value="active">Активен</option>
-            <option value="disabled">Отключён</option>
-            <option value="locked">Заблокирован</option>
+          <Select
+            label={t('settings.users.fields.status', { ns: 'app' })}
+            name="status"
+            value={form.status}
+            onChange={(event) => updateField('status', event.target.value as UserStatus)}
+          >
+            <option value="active">{t('settings.users.status.active', { ns: 'app' })}</option>
+            <option value="disabled">{t('settings.users.status.disabled', { ns: 'app' })}</option>
+            <option value="locked">{t('settings.users.status.locked', { ns: 'app' })}</option>
           </Select>
           <Input
-            label="Максимальная скидка, %"
+            label={t('settings.users.fields.maxDiscount', { ns: 'app' })}
             name="maxDiscountPercent"
             type="number"
             min="0"
@@ -908,7 +992,7 @@ export function SettingsUsersPage() {
           />
           {mode === 'edit' ? (
             <Checkbox
-              label="Сбросить права пользователя к настройкам роли"
+              label={t('settings.users.fields.resetPermissionsToRole', { ns: 'app' })}
               checked={form.resetPermissionsToRole}
               onChange={(event) => updateField('resetPermissionsToRole', event.target.checked)}
             />
@@ -916,16 +1000,16 @@ export function SettingsUsersPage() {
           {formError ? <p className="form-error">{formError}</p> : null}
           <div className="form-actions settings-users-modal-actions">
             <Button type="button" variant="secondary" disabled={createUser.isPending || updateUser.isPending} onClick={closeUserModal}>
-              Отмена
+              {t('actions.cancel', { ns: 'common' })}
             </Button>
             <Button type="submit" isLoading={createUser.isPending || updateUser.isPending}>
-              Сохранить пользователя
+              {t('settings.users.buttons.saveUser', { ns: 'app' })}
             </Button>
           </div>
         </form>
       </Modal>
 
-      <Modal title="Права пользователя" isOpen={Boolean(permissionUser)} onClose={() => setPermissionUser(null)}>
+      <Modal title={t('settings.users.modals.permissionsTitle', { ns: 'app' })} isOpen={Boolean(permissionUser)} onClose={() => setPermissionUser(null)}>
         <div className="form-stack">
           <p>
             <strong>{permissionUser?.username}</strong>
@@ -933,11 +1017,11 @@ export function SettingsUsersPage() {
           <div className="permission-groups">
             {permissionsByModule.map(([module, modulePermissions]) => (
               <section className="permission-group" key={module}>
-                <h3>{module}</h3>
+                <h3>{getModuleLabel(module, t)}</h3>
                 {modulePermissions.map((permission) => (
                   <Checkbox
                     key={permission.id}
-                    label={permission.code}
+                    label={permission.name_ru || permission.code}
                     checked={selectedPermissionIds.has(permission.id)}
                     onChange={() => togglePermission(permission.id)}
                   />
@@ -954,24 +1038,27 @@ export function SettingsUsersPage() {
               disabled={!permissionUser || resetPermissions.isPending || savePermissions.isPending}
               onClick={() => permissionUser && resetPermissions.mutate(permissionUser.id)}
             >
-              Вернуть права роли
+              {t('settings.users.actions.restoreRolePermissions', { ns: 'app' })}
             </Button>
             <Button type="button" variant="secondary" disabled={savePermissions.isPending} onClick={() => setPermissionUser(null)}>
-              Отмена
+              {t('actions.cancel', { ns: 'common' })}
             </Button>
             <Button type="button" isLoading={savePermissions.isPending} onClick={submitPermissions}>
-              Сохранить права
+              {t('settings.users.actions.savePermissions', { ns: 'app' })}
             </Button>
           </div>
         </div>
       </Modal>
 
       <ConfirmDialog
-        title="Удалить пользователя"
-        message={`Удалить ${deleteUser?.username ?? 'этого пользователя'}? Учётная запись будет отключена, а активные сессии будут завершены.`}
+        title={t('settings.users.confirmDelete.title', { ns: 'app' })}
+        message={t('settings.users.confirmDelete.message', {
+          ns: 'app',
+          username: deleteUser?.username ?? t('settings.users.confirmDelete.fallbackUser', { ns: 'app' }),
+        })}
         isOpen={Boolean(deleteUser)}
-        confirmLabel="Удалить"
-        cancelLabel="Отмена"
+        confirmLabel={t('settings.users.confirmDelete.confirmLabel', { ns: 'app' })}
+        cancelLabel={t('actions.cancel', { ns: 'common' })}
         onCancel={() => setDeleteUser(null)}
         onConfirm={() => deleteUser && removeUser.mutate(deleteUser.id)}
       />

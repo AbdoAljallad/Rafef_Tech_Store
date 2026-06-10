@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { catalogApi } from '../../modules/catalog/api/catalog.api';
+import { getAvailableQuantity, hasAvailableStock } from '../../modules/catalog/utils/stockAvailability';
 import { projectsApi } from '../../modules/projects/api/projects.api';
 import { DataTable } from '../../shared/components/DataTable/DataTable';
 import { Button } from '../../shared/ui/Button';
@@ -35,6 +36,7 @@ export function ProjectDetailPage() {
   const [materialProductId, setMaterialProductId] = useState('');
   const [materialQty, setMaterialQty] = useState(1);
   const [materialNotes, setMaterialNotes] = useState('');
+  const [materialError, setMaterialError] = useState('');
   const [reservationResult, setReservationResult] = useState<any | null>(null);
   const [assetSiteId, setAssetSiteId] = useState('');
   const [assetProductId, setAssetProductId] = useState('');
@@ -47,6 +49,8 @@ export function ProjectDetailPage() {
   const projectQuery = useQuery({ queryKey: ['project', projectId], queryFn: () => projectsApi.getProject(projectId), enabled: Number.isFinite(projectId) });
   const productsQuery = useQuery({ queryKey: ['products', productSearch], queryFn: () => catalogApi.listProducts(productSearch) });
   const project = projectQuery.data?.project;
+  const products = productsQuery.data?.items ?? [];
+  const selectedMaterialProduct = products.find((product) => String(product.id) === materialProductId) ?? null;
 
   async function refreshProject() {
     await queryClient.invalidateQueries({ queryKey: ['project', projectId] });
@@ -62,6 +66,8 @@ export function ProjectDetailPage() {
       setMaterialProductId('');
       setMaterialQty(1);
       setMaterialNotes('');
+      setMaterialError('');
+      await queryClient.invalidateQueries({ queryKey: ['products'] });
       await refreshProject();
     },
   });
@@ -79,6 +85,27 @@ export function ProjectDetailPage() {
   const noteMutation = useMutation({ mutationFn: (payload: any) => projectsApi.addNote(projectId, payload), onSuccess: async () => { setNoteText(''); await refreshProject(); } });
 
   if (!id) return null;
+
+  function validateMaterialReservation() {
+    if (!materialProductId) {
+      return t('repair.productRequired');
+    }
+
+    if (materialQty < 0.0001) {
+      return t('repair.quantityMin');
+    }
+
+    if (!selectedMaterialProduct || !hasAvailableStock(selectedMaterialProduct)) {
+      return t('sales.errors.outOfStock');
+    }
+
+    const available = getAvailableQuantity(selectedMaterialProduct);
+    if (materialQty > available) {
+      return t('sales.errors.quantityExceedsAvailable', { count: available });
+    }
+
+    return null;
+  }
 
   return (
     <>
@@ -155,15 +182,33 @@ export function ProjectDetailPage() {
               })}
             </div>
           ) : null}
-          <form className="entity-form" onSubmit={(event) => { event.preventDefault(); if (materialProductId) materialMutation.mutate({ productId: Number(materialProductId), quantity: materialQty, notes: materialNotes || null }); }}>
+          {materialError ? <div className="table-state">{materialError}</div> : null}
+          <form
+            className="entity-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const validationMessage = validateMaterialReservation();
+              if (validationMessage) {
+                setMaterialError(validationMessage);
+                return;
+              }
+
+              setMaterialError('');
+              materialMutation.mutate({ productId: Number(materialProductId), quantity: materialQty, notes: materialNotes || null });
+            }}
+          >
             <Input label={t('projects.productSearch')} value={productSearch} onChange={(event) => setProductSearch(event.target.value)} />
             <Select label={t('projects.materialProduct')} value={materialProductId} onChange={(event) => setMaterialProductId(event.target.value)} required>
               <option value="">{t('repair.selectProduct')}</option>
-              {(productsQuery.data?.items ?? []).map((product) => <option key={product.id} value={product.id}>{product.sku} - {product.default_name}</option>)}
+              {products.map((product) => (
+                <option key={product.id} value={product.id} disabled={!hasAvailableStock(product)}>
+                  {product.sku} - {product.default_name} - {t('sales.fields.available')}: {getAvailableQuantity(product)}
+                </option>
+              ))}
             </Select>
             <Input label={t('projects.qty')} type="number" min={0.0001} step={0.0001} value={materialQty} onChange={(event) => setMaterialQty(Number(event.target.value))} />
             <Textarea label={t('projects.reservationNotes')} value={materialNotes} onChange={(event) => setMaterialNotes(event.target.value)} />
-            <Button type="submit" isLoading={materialMutation.isPending}>{t('projects.reserveMaterial')}</Button>
+            <Button type="submit" isLoading={materialMutation.isPending} disabled={selectedMaterialProduct ? !hasAvailableStock(selectedMaterialProduct) : false}>{t('projects.reserveMaterial')}</Button>
           </form>
         </article>
 

@@ -4,7 +4,14 @@ import { asyncHandler } from '../../shared/http/asyncHandler.js';
 import { parseId } from '../../shared/http/ids.js';
 import { parsePagination } from '../../shared/http/pagination.js';
 import { SalesService } from './sales.service.js';
-import { invoiceCreateSchema, invoiceLineSchema, invoiceApproveSchema, invoiceVoidSchema, returnCreateSchema } from './sales.schemas.js';
+import {
+  invoiceApproveSchema,
+  invoiceCreateSchema,
+  invoiceListQuerySchema,
+  invoiceUpdateSchema,
+  invoiceVoidSchema,
+  returnCreateSchema,
+} from './sales.schemas.js';
 
 const router = Router();
 const sales = new SalesService();
@@ -12,8 +19,27 @@ const sales = new SalesService();
 router.use(requireAuth);
 
 router.get('/sales/invoices', requirePermission('sales.invoices.view'), asyncHandler(async (req, res) => {
-  const { pageSize, offset } = parsePagination(req.query);
-  res.json({ items: await sales.listInvoices(offset, pageSize) });
+  const filters = invoiceListQuerySchema.parse(req.query);
+  const { page, pageSize, offset } = parsePagination(req.query);
+  const result = await sales.listInvoices({
+    offset,
+    limit: pageSize,
+    search: filters.search,
+    documentType: filters.documentType,
+    status: filters.status,
+    dateFrom: filters.dateFrom,
+    dateTo: filters.dateTo,
+  });
+
+  res.json({
+    items: result.items,
+    meta: {
+      page,
+      pageSize,
+      total: result.total,
+      totalPages: Math.max(1, Math.ceil(result.total / pageSize)),
+    },
+  });
 }));
 
 router.post('/sales/invoices', requirePermission('sales.invoices.create'), asyncHandler(async (req, res) => {
@@ -23,6 +49,11 @@ router.post('/sales/invoices', requirePermission('sales.invoices.create'), async
 
 router.get('/sales/invoices/:id', requirePermission('sales.invoices.view'), asyncHandler(async (req, res) => {
   res.json({ invoice: await sales.getInvoice(parseId(req.params.id)) });
+}));
+
+router.patch('/sales/invoices/:id', requirePermission('sales.invoices.view'), asyncHandler(async (req, res) => {
+  const payload = invoiceUpdateSchema.parse(req.body);
+  res.json({ invoice: await sales.updateInvoicePrintContent(parseId(req.params.id), payload, req.currentUser!.id, req.ip) });
 }));
 
 router.post('/sales/invoices/:id/approve', requirePermission('sales.invoices.approve'), asyncHandler(async (req, res) => {

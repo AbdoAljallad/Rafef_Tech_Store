@@ -30,12 +30,30 @@ export const deviceSchema = z.object({
   imei: optionalText,
   notes: optionalText,
 });
+const orderDeviceSchema = z.object({
+  categoryId: id,
+  brandId: id.optional().nullable(),
+  modelId: id.optional().nullable(),
+  deviceName: text,
+  serialNo: optionalText,
+  imei: optionalText,
+  notes: optionalText,
+});
 export const orderSchema = z.object({
   customerId: id,
-  deviceId: id,
+  deviceId: id.optional().nullable(),
+  newDevice: orderDeviceSchema.optional().nullable(),
   problemDescription: text,
   intakeNotes: optionalText,
   assignedUserId: id.optional().nullable(),
+}).superRefine((value, ctx) => {
+  if (!value.deviceId && !value.newDevice) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Device is required',
+      path: ['deviceId'],
+    });
+  }
 });
 export const orderServiceSchema = z.object({
   serviceId: id.optional().nullable(),
@@ -44,6 +62,14 @@ export const orderServiceSchema = z.object({
   unitPrice: money.optional(),
 });
 export const orderPartSchema = z.object({ productId: id, quantity: qty });
+export const orderServiceUpdateSchema = z.object({
+  serviceName: text,
+  quantity: qty,
+  unitPrice: money,
+});
+export const orderPartUpdateSchema = z.object({
+  quantity: qty,
+});
 export const statusChangeSchema = z.object({ status: repairStatusSchema, note: optionalText });
 export const noteSchema = z.object({ noteText: text });
 
@@ -54,6 +80,9 @@ export type DeviceInput = z.infer<typeof deviceSchema>;
 export type OrderInput = z.infer<typeof orderSchema>;
 export type OrderServiceInput = z.infer<typeof orderServiceSchema>;
 export type OrderPartInput = z.infer<typeof orderPartSchema>;
+export type OrderServiceUpdateInput = z.infer<typeof orderServiceUpdateSchema>;
+export type OrderPartUpdateInput = z.infer<typeof orderPartUpdateSchema>;
 export type StatusChangeInput = z.infer<typeof statusChangeSchema>;
 export type NoteInput = z.infer<typeof noteSchema>;
 export type RepairStatus = z.infer<typeof repairStatusSchema>;
+export type OrderDeviceInput = z.infer<typeof orderDeviceSchema>;

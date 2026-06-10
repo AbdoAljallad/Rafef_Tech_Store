@@ -57,6 +57,12 @@ export function createApp() {
     app.use('/api', eventsRouter);
     app.use('/api', aiRouter);
     app.use('/api', adminRouter);
+    app.use('/api', (_request, response) => {
+        response.status(404).json({
+            code: 'NOT_FOUND',
+            message: 'Route not found',
+        });
+    });
     app.use(errorMiddleware);
     return app;
 }
