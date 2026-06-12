@@ -17,23 +17,83 @@ export class CreativeRepository {
         return rows;
     }
     async createJob(input) {
-        const [result] = await pool.execute(`INSERT INTO creative_jobs (job_code, job_type_id, title, description, deadline_at, created_by_user_id) VALUES (?, ?, ?, ?, ?, ?)`, [input.jobCode, input.jobTypeId ?? null, input.title, input.description ?? null, input.deadlineAt ?? null, input.createdBy ?? null]);
+        const [result] = await pool.execute(`INSERT INTO creative_jobs (
+         job_code,
+         job_type_id,
+         customer_id,
+         title,
+         description,
+         deadline_at,
+         created_by_user_id
+       )
+       VALUES (?, ?, ?, ?, ?, ?, ?)`, [
+            input.jobCode,
+            input.jobTypeId ?? null,
+            input.customerId ?? null,
+            input.title,
+            input.description ?? null,
+            input.deadlineAt ?? null,
+            input.createdBy ?? null,
+        ]);
         return { id: result.insertId, job_code: input.jobCode };
     }
     async listJobs() {
-        const [rows] = await pool.execute(`SELECT id, job_code, title, status, deadline_at AS deadline, created_at
-       FROM creative_jobs
+        const [rows] = await pool.execute(`SELECT
+         j.id,
+         j.job_code,
+         j.job_type_id,
+         j.customer_id,
+         jt.default_name AS job_type_name,
+         c.customer_code,
+         c.name AS customer_name,
+         j.title,
+         j.status,
+         j.deadline_at AS deadline,
+         j.created_at,
+         COALESCE(lines.line_count, 0) AS line_count,
+         COALESCE(tasks.vendor_task_count, 0) AS vendor_task_count
+       FROM creative_jobs j
+       LEFT JOIN creative_job_types jt ON jt.id = j.job_type_id
+       LEFT JOIN crm_customers c ON c.id = j.customer_id
+       LEFT JOIN (
+         SELECT job_id, COUNT(*) AS line_count
+         FROM creative_job_lines
+         GROUP BY job_id
+       ) lines ON lines.job_id = j.id
+       LEFT JOIN (
+         SELECT job_id, COUNT(*) AS vendor_task_count
+         FROM creative_vendor_tasks
+         GROUP BY job_id
+       ) tasks ON tasks.job_id = j.id
        ORDER BY created_at DESC, id DESC`);
         return rows;
     }
     async getJob(id) {
-        const [rows] = await pool.execute(`SELECT * FROM creative_jobs WHERE id = ?`, [id]);
+        const [rows] = await pool.execute(`SELECT
+         j.*,
+         jt.default_name AS job_type_name,
+         c.customer_code,
+         c.name AS customer_name
+       FROM creative_jobs j
+       LEFT JOIN creative_job_types jt ON jt.id = j.job_type_id
+       LEFT JOIN crm_customers c ON c.id = j.customer_id
+       WHERE j.id = ?`, [id]);
         const job = rows[0];
         if (!job)
             return null;
-        const [lines] = await pool.execute(`SELECT * FROM creative_job_lines WHERE job_id = ? ORDER BY id`, [id]);
-        const [vendorTasks] = await pool.execute(`SELECT * FROM creative_vendor_tasks WHERE job_id = ? ORDER BY id`, [id]);
-        const [history] = await pool.execute(`SELECT * FROM creative_job_status_history WHERE job_id = ? ORDER BY id`, [id]);
+        const [lines] = await pool.execute(`SELECT *, quantity * COALESCE(unit_price, 0) AS line_total
+       FROM creative_job_lines
+       WHERE job_id = ?
+       ORDER BY id DESC`, [id]);
+        const [vendorTasks] = await pool.execute(`SELECT vt.*, v.name AS vendor_name, v.code AS vendor_code
+       FROM creative_vendor_tasks vt
+       LEFT JOIN creative_vendors v ON v.id = vt.vendor_id
+       WHERE vt.job_id = ?
+       ORDER BY vt.id DESC`, [id]);
+        const [history] = await pool.execute(`SELECT *
+       FROM creative_job_status_history
+       WHERE job_id = ?
+       ORDER BY id DESC`, [id]);
         return { ...job, lines, vendorTasks, history };
     }
     async addJobLine(input) {

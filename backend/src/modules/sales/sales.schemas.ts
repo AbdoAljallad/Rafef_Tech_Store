@@ -33,15 +33,37 @@ const repairPartInvoiceLineSchema = z.object({
   unitPrice: moneySchema.optional(),
 });
 
+const projectMaterialInvoiceLineSchema = z.object({
+  lineType: z.literal('project_material'),
+  projectMaterialId: idSchema,
+  quantity: qtySchema.optional(),
+  unitPrice: moneySchema.optional(),
+});
+
+const manualInvoiceLineSchema = z.object({
+  lineType: z.literal('manual'),
+  description: z.string().trim().min(1),
+  quantity: qtySchema,
+  unitPrice: moneySchema,
+  unitCost: moneySchema.optional().nullable(),
+  sku: optionalText,
+  categoryName: optionalText,
+  sourceType: optionalText,
+  sourceId: idSchema.optional().nullable(),
+});
+
 export const invoiceLineSchema = z.union([
   productInvoiceLineSchema,
   repairServiceInvoiceLineSchema,
   repairPartInvoiceLineSchema,
+  projectMaterialInvoiceLineSchema,
+  manualInvoiceLineSchema,
 ]);
 
 export const invoiceCreateSchema = z.object({
   customerId: idSchema.optional().nullable(),
   repairOrderId: idSchema.optional().nullable(),
+  projectId: idSchema.optional().nullable(),
   isWalkIn: z.boolean().optional().default(true),
   documentType: documentTypeSchema.optional().default('invoice'),
   noteText: optionalText,

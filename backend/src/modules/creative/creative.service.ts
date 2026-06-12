@@ -20,9 +20,24 @@ export class CreativeService {
     return this.repo.listVendors();
   }
 
-  async createJob(payload: { jobTypeId?: number | null; title: string; description?: string | null; deadlineAt?: string | null; createdBy?: number }) {
+  async createJob(payload: {
+    jobTypeId?: number | null;
+    customerId?: number | null;
+    title: string;
+    description?: string | null;
+    deadlineAt?: string | null;
+    createdBy?: number;
+  }) {
     const code = `CRJ-${Date.now()}-${nanoid(5)}`;
-    return this.repo.createJob({ jobCode: code, jobTypeId: payload.jobTypeId ?? null, title: payload.title, description: payload.description ?? null, deadlineAt: payload.deadlineAt ?? null, createdBy: payload.createdBy ?? null });
+    return this.repo.createJob({
+      jobCode: code,
+      jobTypeId: payload.jobTypeId ?? null,
+      customerId: payload.customerId ?? null,
+      title: payload.title,
+      description: payload.description ?? null,
+      deadlineAt: payload.deadlineAt ?? null,
+      createdBy: payload.createdBy ?? null,
+    });
   }
 
   async listJobs() {

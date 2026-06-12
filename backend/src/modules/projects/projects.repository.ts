@@ -16,6 +16,16 @@ function nullable(value: string | number | null | undefined) {
   return value === undefined ? null : value;
 }
 
+type ProjectHeaderRow = RowDataPacket & {
+  id: number;
+  project_code: string;
+  customer_id: number | null;
+  customer_code: string | null;
+  customer_name: string | null;
+  title: string;
+  status: ProjectStatus;
+};
+
 export class ProjectsRepository {
   async listTypes() {
     const [rows] = await pool.execute<RowDataPacket[]>('SELECT * FROM project_types WHERE is_active = TRUE ORDER BY default_name');
@@ -70,15 +80,75 @@ export class ProjectsRepository {
   }
 
   async findProject(id: number) {
-    const [projects] = await pool.execute<RowDataPacket[]>('SELECT * FROM projects WHERE id = ? LIMIT 1', [id]);
+    const [projects] = await pool.execute<RowDataPacket[]>(
+      `SELECT
+         p.*,
+         pt.default_name AS project_type_name,
+         c.customer_code,
+         c.name AS customer_name
+       FROM projects p
+       LEFT JOIN project_types pt ON pt.id = p.project_type_id
+       LEFT JOIN crm_customers c ON c.id = p.customer_id
+       WHERE p.id = ?
+       LIMIT 1`,
+      [id],
+    );
     const project = projects[0];
     if (!project) return null;
     const [sites] = await pool.execute<RowDataPacket[]>('SELECT * FROM project_sites WHERE project_id = ? ORDER BY id', [id]);
-    const [materials] = await pool.execute<RowDataPacket[]>('SELECT * FROM project_materials WHERE project_id = ? ORDER BY id', [id]);
+    const [materials] = await pool.execute<RowDataPacket[]>(
+      `SELECT
+         m.*,
+         p.sku AS product_sku,
+         p.current_sale_price,
+         r.status AS reservation_status
+       FROM project_materials m
+       INNER JOIN catalog_products p ON p.id = m.product_id
+       LEFT JOIN inventory_stock_reservations r ON r.id = m.reservation_id
+       WHERE m.project_id = ?
+       ORDER BY m.id`,
+      [id],
+    );
     const [assets] = await pool.execute<RowDataPacket[]>('SELECT * FROM project_installed_assets WHERE project_id = ? ORDER BY id', [id]);
     const [notes] = await pool.execute<RowDataPacket[]>('SELECT * FROM project_notes WHERE project_id = ? ORDER BY id', [id]);
     const [history] = await pool.execute<RowDataPacket[]>('SELECT * FROM project_status_history WHERE project_id = ? ORDER BY id', [id]);
     return { ...project, sites, materials, installedAssets: assets, notes, history };
+  }
+
+  async getProjectBilling(projectId: number) {
+    const project = await this.getProjectHeader(projectId);
+    if (!project) {
+      throw new AppError(404, 'NOT_FOUND', 'Project not found');
+    }
+    if (project.status === 'cancelled') {
+      return { project, materials: [] };
+    }
+
+    const [materials] = await pool.execute<RowDataPacket[]>(
+      `SELECT
+         m.id AS project_material_id,
+         m.project_id,
+         m.product_id,
+         m.product_name_snapshot,
+         m.quantity,
+         m.unit_cost_snapshot,
+         m.reservation_id,
+         m.sales_invoice_id,
+         p.sku AS product_sku,
+         p.current_sale_price,
+         c.default_name AS category_name,
+         r.status AS reservation_status,
+         CAST(m.quantity * COALESCE(p.current_sale_price, 0) AS DECIMAL(19,4)) AS line_total
+       FROM project_materials m
+       INNER JOIN catalog_products p ON p.id = m.product_id
+       INNER JOIN catalog_categories c ON c.id = p.category_id
+       LEFT JOIN inventory_stock_reservations r ON r.id = m.reservation_id
+       WHERE m.project_id = ? AND m.sales_invoice_id IS NULL
+       ORDER BY m.id`,
+      [projectId],
+    );
+
+    return { project, materials };
   }
 
   async addSite(projectId: number, input: ProjectSiteInput, userId: number) {
@@ -194,6 +264,25 @@ export class ProjectsRepository {
     const product = rows[0];
     if (!product) throw new AppError(404, 'NOT_FOUND', 'Product not found');
     return product;
+  }
+
+  async getProjectHeader(id: number) {
+    const [rows] = await pool.execute<ProjectHeaderRow[]>(
+      `SELECT
+         p.id,
+         p.project_code,
+         p.customer_id,
+         c.customer_code,
+         c.name AS customer_name,
+         p.title,
+         p.status
+       FROM projects p
+       LEFT JOIN crm_customers c ON c.id = p.customer_id
+       WHERE p.id = ?
+       LIMIT 1`,
+      [id],
+    );
+    return rows[0] ?? null;
   }
 
   private async requireType(id: number) {

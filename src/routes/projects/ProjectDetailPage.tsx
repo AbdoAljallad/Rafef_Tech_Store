@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText } from 'lucide-react';
+import { Boxes, FileText, MapPinned, ReceiptText, Server, WalletCards } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { catalogApi } from '../../modules/catalog/api/catalog.api';
 import { getAvailableQuantity, hasAvailableStock } from '../../modules/catalog/utils/stockAvailability';
@@ -25,6 +25,7 @@ function formatProjectStatus(status: string | null | undefined, t: (key: string,
 export function ProjectDetailPage() {
   const { t } = useTranslation('app');
   const { id } = useParams();
+  const navigate = useNavigate();
   const projectId = Number(id);
   const queryClient = useQueryClient();
   const [siteName, setSiteName] = useState('');
@@ -47,10 +48,15 @@ export function ProjectDetailPage() {
   const [noteText, setNoteText] = useState('');
 
   const projectQuery = useQuery({ queryKey: ['project', projectId], queryFn: () => projectsApi.getProject(projectId), enabled: Number.isFinite(projectId) });
+  const projectBillingQuery = useQuery({ queryKey: ['projectBilling', projectId], queryFn: () => projectsApi.getProjectBilling(projectId), enabled: Number.isFinite(projectId) });
   const productsQuery = useQuery({ queryKey: ['products', productSearch], queryFn: () => catalogApi.listProducts(productSearch) });
   const project = projectQuery.data?.project;
+  const projectBilling = projectBillingQuery.data?.billing;
   const products = productsQuery.data?.items ?? [];
   const selectedMaterialProduct = products.find((product) => String(product.id) === materialProductId) ?? null;
+  const pendingMaterialCount = projectBilling?.materials?.length ?? 0;
+  const pendingMaterialTotal = (projectBilling?.materials ?? []).reduce((sum, item: any) => sum + Number(item.line_total ?? 0), 0);
+  const billedMaterialCount = (project?.materials ?? []).filter((material: any) => Boolean(material.sales_invoice_id)).length;
 
   async function refreshProject() {
     await queryClient.invalidateQueries({ queryKey: ['project', projectId] });
@@ -116,16 +122,44 @@ export function ProjectDetailPage() {
         </div>
         <div className="page-actions">
           <Link to="/projects">{t('projects.backToProjects')}</Link>
+          <Button variant="secondary" icon={<ReceiptText size={18} />} onClick={() => navigate(`/sales/pos?projectId=${id}`)}>
+            {t('projects.openInPos')}
+          </Button>
           <Button icon={<FileText size={18} />} onClick={() => { window.location.href = `/projects/${id}/summary`; }}>
             {t('projects.summary')}
           </Button>
         </div>
       </header>
 
+      <section className="ops-summary-grid">
+        <article className="panel ops-summary-card">
+          <MapPinned size={20} />
+          <strong>{project?.sites?.length ?? 0}</strong>
+          <span>{t('projects.sites')}</span>
+        </article>
+        <article className="panel ops-summary-card">
+          <Boxes size={20} />
+          <strong>{pendingMaterialCount}</strong>
+          <span>{t('projects.pendingMaterials')}</span>
+        </article>
+        <article className="panel ops-summary-card">
+          <WalletCards size={20} />
+          <strong>{pendingMaterialTotal.toFixed(2)}</strong>
+          <span>{t('projects.estimatedMaterialsTotal')}</span>
+        </article>
+        <article className="panel ops-summary-card">
+          <Server size={20} />
+          <strong>{project?.installedAssets?.length ?? 0}</strong>
+          <span>{t('projects.installedAssets')}</span>
+        </article>
+      </section>
+
       <section className="panel entity-summary">
         <h2>{project?.title ?? t('projects.loadingProject')}</h2>
         <p><strong>{t('projects.status')}:</strong> {formatProjectStatus(project?.status, t)}</p>
         <p><strong>{t('projects.description')}:</strong> {project?.description ?? '-'}</p>
+        <p><strong>{t('projects.customer')}:</strong> {project?.customer_name ?? t('projects.customerNone')}</p>
+        <p><strong>{t('projects.billingTitle')}:</strong> {t('projects.billingHint', { count: pendingMaterialCount, billed: billedMaterialCount })}</p>
       </section>
 
       <section className="detail-grid">

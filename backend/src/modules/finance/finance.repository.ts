@@ -344,8 +344,8 @@ export class FinanceRepository {
   }
 
   async listTransactions(params: { limit?: number } = {}) {
-    const limit = params.limit ?? 30;
-    const [rows] = await pool.execute<FinanceTransactionRow[]>(
+    const limit = Math.max(1, Math.floor(Number(params.limit ?? 30)));
+    const [rows] = await pool.query<FinanceTransactionRow[]>(
       `SELECT
          t.id,
          t.transaction_code,
@@ -369,8 +369,7 @@ export class FinanceRepository {
        LEFT JOIN finance_payment_accounts a ON a.id = t.account_id
        LEFT JOIN finance_payment_methods m ON m.id = t.payment_method_id
        ORDER BY t.created_at DESC, t.id DESC
-       LIMIT ?`,
-      [limit],
+       LIMIT ${limit}`,
     );
     return rows;
   }

@@ -13,6 +13,7 @@ type InvoiceHeaderRow = RowDataPacket & {
   invoice_code: string;
   customer_id: number | null;
   repair_order_id: number | null;
+  project_id: number | null;
   customer_code: string | null;
   customer_name: string | null;
   is_walk_in: number;
@@ -49,6 +50,7 @@ type InvoiceLineRow = RowDataPacket & {
   reservation_id: number | null;
   repair_order_service_id: number | null;
   repair_order_part_id: number | null;
+  project_material_id: number | null;
   source_type: string | null;
   source_id: number | null;
   line_total: string;
@@ -71,6 +73,7 @@ type RawInvoiceLineRow = RowDataPacket & {
   reservation_id: number | null;
   repair_order_service_id: number | null;
   repair_order_part_id: number | null;
+  project_material_id: number | null;
   source_type: string | null;
   source_id: number | null;
   line_total: string;
@@ -120,6 +123,31 @@ type RepairPartBillableRow = RowDataPacket & {
   reservation_status: 'active' | 'consumed' | 'released' | 'cancelled' | null;
 };
 
+type ProjectHeaderRow = RowDataPacket & {
+  id: number;
+  project_code: string;
+  customer_id: number | null;
+  customer_name: string | null;
+  customer_code: string | null;
+  title: string;
+  status: string;
+};
+
+type ProjectMaterialBillableRow = RowDataPacket & {
+  id: number;
+  project_id: number;
+  product_id: number;
+  product_name_snapshot: string;
+  quantity: string;
+  unit_cost_snapshot: string;
+  reservation_id: number;
+  sales_invoice_id: number | null;
+  product_sku: string;
+  current_sale_price: string;
+  category_name: string;
+  reservation_status: 'active' | 'consumed' | 'released' | 'cancelled' | null;
+};
+
 type FinanceMethodLockRow = RowDataPacket & {
   id: number;
   linked_account_id: number | null;
@@ -156,6 +184,15 @@ type RepairPartLockRow = RowDataPacket & {
   sales_invoice_id: number | null;
 };
 
+type ProjectMaterialLockRow = RowDataPacket & {
+  id: number;
+  project_id: number;
+  product_id: number;
+  quantity: string;
+  reservation_id: number;
+  sales_invoice_id: number | null;
+};
+
 export type InvoiceInsertLine = {
   lineType: InvoiceLineType;
   productId?: number | null;
@@ -168,6 +205,7 @@ export type InvoiceInsertLine = {
   reservationId?: number | null;
   repairOrderServiceId?: number | null;
   repairOrderPartId?: number | null;
+  projectMaterialId?: number | null;
   sourceType?: string | null;
   sourceId?: number | null;
 };
@@ -197,6 +235,7 @@ export class SalesRepository {
   async createInvoice(input: {
     customerId?: number | null;
     repairOrderId?: number | null;
+    projectId?: number | null;
     isWalkIn?: boolean;
     documentType: InvoiceDocumentType;
     noteText?: string | null;
@@ -212,6 +251,7 @@ export class SalesRepository {
          invoice_code,
          customer_id,
          repair_order_id,
+         project_id,
          is_walk_in,
          document_type,
          note_text,
@@ -221,11 +261,12 @@ export class SalesRepository {
          receipt_footer_text,
          created_by_user_id
        )
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         code,
         input.customerId ?? null,
         input.repairOrderId ?? null,
+        input.projectId ?? null,
         !!input.isWalkIn,
         input.documentType,
         nullable(input.noteText),
@@ -256,11 +297,12 @@ export class SalesRepository {
          reservation_id,
          repair_order_service_id,
          repair_order_part_id,
+         project_material_id,
          source_type,
          source_id,
          line_total
        )
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         invoiceId,
         line.lineType,
@@ -274,6 +316,7 @@ export class SalesRepository {
         line.reservationId ?? null,
         line.repairOrderServiceId ?? null,
         line.repairOrderPartId ?? null,
+        line.projectMaterialId ?? null,
         nullable(line.sourceType),
         line.sourceId ?? null,
         lineTotal,
@@ -343,8 +386,8 @@ export class SalesRepository {
     dateFrom?: string;
     dateTo?: string;
   } = {}) {
-    const offset = params.offset ?? 0;
-    const limit = params.limit ?? 50;
+    const offset = Math.max(0, Math.floor(Number(params.offset ?? 0)));
+    const limit = Math.max(1, Math.floor(Number(params.limit ?? 50)));
     const conditions = ['1 = 1'];
     const values: Array<string | number> = [];
 
@@ -397,8 +440,8 @@ export class SalesRepository {
        LEFT JOIN crm_customers c ON c.id = i.customer_id
        WHERE ${whereClause}
        ORDER BY i.created_at DESC, i.id DESC
-       LIMIT ? OFFSET ?`,
-      [...values, limit, offset],
+       LIMIT ${limit} OFFSET ${offset}`,
+      values,
     );
 
     return {
@@ -467,6 +510,25 @@ export class SalesRepository {
     return rows[0] ?? null;
   }
 
+  async getProjectHeader(projectId: number) {
+    const [rows] = await pool.execute<ProjectHeaderRow[]>(
+      `SELECT
+         p.id,
+         p.project_code,
+         p.customer_id,
+         c.name AS customer_name,
+         c.customer_code,
+         p.title,
+         p.status
+       FROM projects p
+       LEFT JOIN crm_customers c ON c.id = p.customer_id
+       WHERE p.id = ?
+       LIMIT 1`,
+      [projectId],
+    );
+    return rows[0] ?? null;
+  }
+
   async findRepairServiceBillable(repairOrderServiceId: number) {
     const [rows] = await pool.execute<RepairServiceBillableRow[]>(
       `SELECT
@@ -510,6 +572,32 @@ export class SalesRepository {
     return rows[0] ?? null;
   }
 
+  async findProjectMaterialBillable(projectMaterialId: number) {
+    const [rows] = await pool.execute<ProjectMaterialBillableRow[]>(
+      `SELECT
+         m.id,
+         m.project_id,
+         m.product_id,
+         m.product_name_snapshot,
+         m.quantity,
+         m.unit_cost_snapshot,
+         m.reservation_id,
+         m.sales_invoice_id,
+         p.sku AS product_sku,
+         p.current_sale_price,
+         c.default_name AS category_name,
+         r.status AS reservation_status
+       FROM project_materials m
+       INNER JOIN catalog_products p ON p.id = m.product_id
+       INNER JOIN catalog_categories c ON c.id = p.category_id
+       LEFT JOIN inventory_stock_reservations r ON r.id = m.reservation_id
+       WHERE m.id = ?
+       LIMIT 1`,
+      [projectMaterialId],
+    );
+    return rows[0] ?? null;
+  }
+
   async approveInvoice(
     id: number,
     approverId: number,
@@ -542,6 +630,10 @@ export class SalesRepository {
 
       for (const line of lines.filter((entry) => entry.line_type === 'repair_part')) {
         await this.consumeRepairPartLine(connection, invoice, line, approverId);
+      }
+
+      for (const line of lines.filter((entry) => entry.line_type === 'project_material')) {
+        await this.consumeProjectMaterialLine(connection, invoice, line, approverId);
       }
 
       for (const line of lines.filter((entry) => entry.line_type === 'repair_service')) {
@@ -843,6 +935,69 @@ export class SalesRepository {
     );
   }
 
+  private async consumeProjectMaterialLine(
+    connection: PoolConnection,
+    invoice: InvoiceHeaderRow,
+    line: RawInvoiceLineRow,
+    actorUserId: number,
+  ) {
+    if (!line.product_id || !line.project_material_id || !line.reservation_id) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'Project material line is incomplete');
+    }
+    const material = await this.lockProjectMaterial(connection, line.project_material_id);
+    if (material.sales_invoice_id && Number(material.sales_invoice_id) !== invoice.id) {
+      throw new AppError(409, 'STATE_CONFLICT', 'Project material has already been billed');
+    }
+    if (invoice.project_id && Number(material.project_id) !== Number(invoice.project_id)) {
+      throw new AppError(409, 'STATE_CONFLICT', 'Project material does not belong to the selected project');
+    }
+    if (!sameQuantity(material.quantity, line.quantity)) {
+      throw new AppError(400, 'VALIDATION_ERROR', 'Project material quantity must match the reserved quantity');
+    }
+
+    const reservation = await this.lockReservation(connection, line.reservation_id);
+    if (reservation.status !== 'active') {
+      throw new AppError(409, 'STATE_CONFLICT', 'Project reservation is no longer active');
+    }
+    if (Number(reservation.product_id) !== Number(line.product_id) || Number(material.product_id) !== Number(line.product_id)) {
+      throw new AppError(409, 'STATE_CONFLICT', 'Project reservation product does not match the invoice line');
+    }
+    if (!sameQuantity(reservation.quantity, line.quantity)) {
+      throw new AppError(409, 'STATE_CONFLICT', 'Project reservation quantity does not match the invoice line');
+    }
+
+    await this.lockBalance(connection, reservation.product_id);
+    await connection.execute(
+      `UPDATE inventory_stock_balances
+       SET quantity_on_hand = quantity_on_hand - ?,
+           quantity_reserved = quantity_reserved - ?
+       WHERE product_id = ?`,
+      [reservation.quantity, reservation.quantity, reservation.product_id],
+    );
+    await this.insertInventoryMovement(connection, {
+      productId: reservation.product_id,
+      movementType: 'reservation_consume',
+      quantity: toNumber(reservation.quantity),
+      unitCost: null,
+      sourceType: 'stock_reservation',
+      sourceId: reservation.id,
+      note: `Project material consumed by invoice ${invoice.invoice_code}`,
+      actorUserId,
+    });
+    await connection.execute(
+      `UPDATE inventory_stock_reservations
+       SET status = 'consumed', consumed_by_user_id = ?, consumed_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [actorUserId, reservation.id],
+    );
+    await connection.execute(
+      `UPDATE project_materials
+       SET sales_invoice_id = ?, billed_at = CURRENT_TIMESTAMP
+       WHERE id = ? AND (sales_invoice_id IS NULL OR sales_invoice_id = ?)`,
+      [invoice.id, material.id, invoice.id],
+    );
+  }
+
   private async markRepairServiceLineBilled(
     connection: PoolConnection,
     invoice: InvoiceHeaderRow,
@@ -954,6 +1109,18 @@ export class SalesRepository {
       throw new AppError(404, 'NOT_FOUND', 'Repair part not found');
     }
     return part;
+  }
+
+  private async lockProjectMaterial(connection: PoolConnection, projectMaterialId: number) {
+    const [rows] = await connection.execute<ProjectMaterialLockRow[]>(
+      'SELECT * FROM project_materials WHERE id = ? FOR UPDATE',
+      [projectMaterialId],
+    );
+    const material = rows[0];
+    if (!material) {
+      throw new AppError(404, 'NOT_FOUND', 'Project material not found');
+    }
+    return material;
   }
 
   private async insertInventoryMovement(

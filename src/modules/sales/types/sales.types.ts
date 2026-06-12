@@ -4,7 +4,7 @@ export type SalesInvoiceStatus = 'draft' | 'approved' | 'voided' | 'returned';
 export type SalesInvoiceLine = {
   id: number;
   invoice_id: number;
-  line_type: 'product' | 'repair_part' | 'repair_service' | 'manual';
+  line_type: 'product' | 'repair_part' | 'repair_service' | 'manual' | 'project_material';
   product_id: number | null;
   description_snapshot?: string | null;
   sku_snapshot?: string | null;
@@ -15,6 +15,7 @@ export type SalesInvoiceLine = {
   reservation_id?: number | null;
   repair_order_service_id?: number | null;
   repair_order_part_id?: number | null;
+  project_material_id?: number | null;
   source_type?: string | null;
   source_id?: number | null;
   line_total: string;
@@ -28,6 +29,7 @@ export type SalesInvoice = {
   invoice_code: string;
   customer_id: number | null;
   repair_order_id?: number | null;
+  project_id?: number | null;
   customer_code?: string | null;
   customer_name?: string | null;
   is_walk_in: boolean | number;
@@ -76,6 +78,7 @@ export type SalesInvoiceListResponse = {
 export type SalesInvoiceCreatePayload = {
   customerId?: number | null;
   repairOrderId?: number | null;
+  projectId?: number | null;
   isWalkIn?: boolean;
   documentType?: SalesDocumentType;
   noteText?: string | null;
@@ -101,6 +104,23 @@ export type SalesInvoiceCreatePayload = {
         repairOrderPartId: number;
         quantity?: number;
         unitPrice?: number;
+      }
+    | {
+        lineType: 'project_material';
+        projectMaterialId: number;
+        quantity?: number;
+        unitPrice?: number;
+      }
+    | {
+        lineType: 'manual';
+        description: string;
+        quantity: number;
+        unitPrice: number;
+        unitCost?: number | null;
+        sku?: string | null;
+        categoryName?: string | null;
+        sourceType?: string | null;
+        sourceId?: number | null;
       }
   >;
 };

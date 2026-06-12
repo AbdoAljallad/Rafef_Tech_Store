@@ -16,6 +16,7 @@ export class SalesService {
         const invoice = await this.salesRepo.createInvoice({
             customerId: prepared.customerId,
             repairOrderId: prepared.repairOrderId,
+            projectId: prepared.projectId,
             isWalkIn: prepared.isWalkIn,
             documentType: input.documentType,
             noteText: input.noteText ?? null,
@@ -99,6 +100,7 @@ export class SalesService {
     }
     async prepareInvoice(input) {
         let repairOrderId = input.repairOrderId ?? null;
+        let projectId = input.projectId ?? null;
         let customerId = input.customerId ?? null;
         let isWalkIn = input.isWalkIn ?? true;
         const preparedLines = [];
@@ -106,6 +108,9 @@ export class SalesService {
             switch (line.lineType ?? 'product') {
                 case 'product':
                     preparedLines.push(await this.prepareProductLine(line));
+                    break;
+                case 'manual':
+                    preparedLines.push(this.prepareManualLine(line));
                     break;
                 case 'repair_service': {
                     const preparedLine = await this.prepareRepairServiceLine(line);
@@ -119,7 +124,16 @@ export class SalesService {
                     repairOrderId = this.mergeRepairOrderId(repairOrderId, preparedLine.repairOrderId);
                     break;
                 }
+                case 'project_material': {
+                    const preparedLine = await this.prepareProjectMaterialLine(line);
+                    preparedLines.push(preparedLine.line);
+                    projectId = this.mergeProjectId(projectId, preparedLine.projectId);
+                    break;
+                }
             }
+        }
+        if (repairOrderId && projectId) {
+            throw new AppError(409, 'STATE_CONFLICT', 'Repair and project billing cannot be mixed in one document');
         }
         if (repairOrderId) {
             const order = await this.salesRepo.getRepairOrderHeader(repairOrderId);
@@ -135,9 +149,26 @@ export class SalesService {
             customerId = Number(order.customer_id);
             isWalkIn = false;
         }
+        if (projectId) {
+            const project = await this.salesRepo.getProjectHeader(projectId);
+            if (!project) {
+                throw new AppError(404, 'NOT_FOUND', 'Project not found');
+            }
+            if (project.status === 'cancelled' && input.documentType === 'invoice') {
+                throw new AppError(409, 'STATE_CONFLICT', 'Cannot create an invoice for a cancelled project');
+            }
+            if (customerId && project.customer_id && Number(customerId) !== Number(project.customer_id)) {
+                throw new AppError(409, 'STATE_CONFLICT', 'Invoice customer must match the project customer');
+            }
+            if (project.customer_id) {
+                customerId = Number(project.customer_id);
+                isWalkIn = false;
+            }
+        }
         return {
             customerId,
             repairOrderId,
+            projectId,
             isWalkIn,
             lines: preparedLines,
         };
@@ -220,12 +251,67 @@ export class SalesService {
             },
         };
     }
+    async prepareProjectMaterialLine(line) {
+        const material = await this.salesRepo.findProjectMaterialBillable(line.projectMaterialId);
+        if (!material) {
+            throw new AppError(404, 'NOT_FOUND', 'Project material not found');
+        }
+        if (material.sales_invoice_id) {
+            throw new AppError(409, 'STATE_CONFLICT', 'Project material has already been billed');
+        }
+        if (material.reservation_status && material.reservation_status !== 'active') {
+            throw new AppError(409, 'STATE_CONFLICT', 'Project material reservation is not active');
+        }
+        const quantity = Number(material.quantity);
+        if (line.quantity !== undefined && Math.abs(Number(line.quantity) - quantity) > 0.000001) {
+            throw new AppError(400, 'VALIDATION_ERROR', 'Project material quantity must match the reserved quantity');
+        }
+        return {
+            projectId: Number(material.project_id),
+            line: {
+                lineType: 'project_material',
+                productId: Number(material.product_id),
+                quantity,
+                unitPrice: line.unitPrice ?? Number(material.current_sale_price ?? 0),
+                unitCost: Number(material.unit_cost_snapshot ?? 0),
+                descriptionSnapshot: material.product_name_snapshot,
+                skuSnapshot: material.product_sku,
+                categoryNameSnapshot: material.category_name,
+                reservationId: Number(material.reservation_id),
+                projectMaterialId: line.projectMaterialId,
+                sourceType: 'project_material',
+                sourceId: line.projectMaterialId,
+            },
+        };
+    }
+    prepareManualLine(line) {
+        return {
+            lineType: 'manual',
+            quantity: line.quantity,
+            unitPrice: line.unitPrice,
+            unitCost: line.unitCost ?? null,
+            descriptionSnapshot: line.description,
+            skuSnapshot: line.sku ?? null,
+            categoryNameSnapshot: line.categoryName ?? 'manual',
+            sourceType: line.sourceType ?? null,
+            sourceId: line.sourceId ?? null,
+        };
+    }
     mergeRepairOrderId(current, next) {
         if (!current) {
             return next;
         }
         if (Number(current) !== Number(next)) {
             throw new AppError(409, 'STATE_CONFLICT', 'All repair lines in one invoice must belong to the same repair order');
+        }
+        return current;
+    }
+    mergeProjectId(current, next) {
+        if (!current) {
+            return next;
+        }
+        if (Number(current) !== Number(next)) {
+            throw new AppError(409, 'STATE_CONFLICT', 'All project lines in one invoice must belong to the same project');
         }
         return current;
     }

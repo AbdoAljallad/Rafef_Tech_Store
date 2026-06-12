@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { Calculator, History } from 'lucide-react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { DataTableColumn } from '../../shared/components/DataTable/DataTable';
@@ -9,6 +9,7 @@ import { getAvailableQuantity, getReorderThreshold, hasAvailableStock } from '..
 import { crmApi } from '../../modules/crm/api/crm.api';
 import financeApi from '../../modules/finance/api/finance.api';
 import { repairApi } from '../../modules/repair/api/repair.api';
+import { projectsApi } from '../../modules/projects/api/projects.api';
 import { salesApi } from '../../modules/sales/api/sales.api';
 import { formatSalesMoney, getSalesErrorMessage } from '../../modules/sales/utils/salesPresentation';
 import type { SalesDocumentType } from '../../modules/sales/types/sales.types';
@@ -54,10 +55,59 @@ type RepairPartCartLine = {
   unitPrice: number;
 };
 
-type CartLine = ProductCartLine | RepairServiceCartLine | RepairPartCartLine;
+type ProjectMaterialCartLine = {
+  kind: 'project_material';
+  key: string;
+  projectId: number;
+  projectMaterialId: number;
+  productId: number;
+  reservationId: number;
+  description: string;
+  sku: string;
+  categoryName: string;
+  qty: number;
+  unitPrice: number;
+};
+
+type ManualCartLine = {
+  kind: 'manual';
+  key: string;
+  description: string;
+  qty: number;
+  unitPrice: number;
+  sku?: string | null;
+  categoryName?: string | null;
+  sourceType?: string | null;
+  sourceId?: number | null;
+};
+
+type CartLine = ProductCartLine | RepairServiceCartLine | RepairPartCartLine | ProjectMaterialCartLine | ManualCartLine;
+
+type PosDraftState = {
+  context?: {
+    kind: 'creative_job';
+    id: number;
+    code?: string | null;
+    title?: string | null;
+    customerName?: string | null;
+  };
+  customerId?: number | null;
+  isWalkIn?: boolean;
+  documentType?: SalesDocumentType;
+  lines?: Array<{
+    kind: 'manual';
+    description: string;
+    qty: number;
+    unitPrice: number;
+    sku?: string | null;
+    categoryName?: string | null;
+    sourceType?: string | null;
+    sourceId?: number | null;
+  }>;
+};
 
 type ProductSortMode = 'name-asc' | 'price-asc' | 'price-desc' | 'stock-asc' | 'stock-desc';
-type ProductScopeMode = 'all' | 'sales' | 'repair' | 'creative';
+type ProductScopeMode = 'all' | 'sales' | 'repair' | 'creative' | 'projects';
 type StockFilterMode = 'all' | 'in-stock' | 'low-stock' | 'out-of-stock';
 
 const productCollator = new Intl.Collator(['ar', 'en', 'ru'], {
@@ -92,12 +142,18 @@ function safeEvaluateExpression(expression: string) {
 
 function getRepairOrderIdFromCart(cart: CartLine[]) {
   const repairLine = cart.find((line) => line.kind !== 'product');
-  return repairLine ? repairLine.repairOrderId : null;
+  return repairLine && 'repairOrderId' in repairLine ? repairLine.repairOrderId : null;
+}
+
+function getProjectIdFromCart(cart: CartLine[]) {
+  const projectLine = cart.find((line) => line.kind === 'project_material');
+  return projectLine ? projectLine.projectId : null;
 }
 
 export function PosPage() {
   const { t, i18n } = useTranslation('app');
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
@@ -119,18 +175,23 @@ export function PosPage() {
   const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [importedRepairOrderId, setImportedRepairOrderId] = useState<number | null>(null);
+  const [importedProjectId, setImportedProjectId] = useState<number | null>(null);
+  const [importedDraftKey, setImportedDraftKey] = useState<string | null>(null);
 
   const repairOrderIdParam = Number(searchParams.get('repairOrderId') ?? 0) || null;
+  const projectIdParam = Number(searchParams.get('projectId') ?? 0) || null;
+  const routeDraft = (location.state as { posDraft?: PosDraftState } | null)?.posDraft ?? null;
   const language = i18n.resolvedLanguage;
   const deferredSearch = useDeferredValue(search);
   const deferredCustomerSearch = useDeferredValue(customerSearch);
   const activeRepairOrderId = useMemo(() => getRepairOrderIdFromCart(cart), [cart]);
-  const isRepairCustomerLocked = activeRepairOrderId !== null;
+  const activeProjectId = useMemo(() => getProjectIdFromCart(cart), [cart]);
+  const isCustomerLocked = activeRepairOrderId !== null || activeProjectId !== null;
 
   const customersQuery = useQuery({
     queryKey: ['customers', 'pos', deferredCustomerSearch],
     queryFn: () => crmApi.listCustomers(deferredCustomerSearch, { pageSize: 100, sortMode: 'name-asc' }),
-    enabled: !isWalkIn && !isRepairCustomerLocked,
+    enabled: !isWalkIn && !isCustomerLocked,
   });
   const productsQuery = useQuery({
     queryKey: ['products', 'pos', deferredSearch],
@@ -155,6 +216,11 @@ export function PosPage() {
     queryFn: () => repairApi.getOrderBilling(repairOrderIdParam as number),
     enabled: Boolean(repairOrderIdParam),
   });
+  const projectBillingQuery = useQuery({
+    queryKey: ['project-pos-billing', projectIdParam],
+    queryFn: () => projectsApi.getProjectBilling(projectIdParam as number),
+    enabled: Boolean(projectIdParam),
+  });
 
   const createInvoice = useMutation({
     mutationFn: salesApi.createInvoice,
@@ -169,6 +235,7 @@ export function PosPage() {
       await queryClient.invalidateQueries({ queryKey: ['products'] });
       await queryClient.invalidateQueries({ queryKey: ['repairOrderBilling'] });
       await queryClient.invalidateQueries({ queryKey: ['repair-pos-billing'] });
+      await queryClient.invalidateQueries({ queryKey: ['project-pos-billing'] });
     },
   });
 
@@ -184,11 +251,11 @@ export function PosPage() {
   );
 
   useEffect(() => {
-    if (isWalkIn && !isRepairCustomerLocked) {
+    if (isWalkIn && !isCustomerLocked) {
       setCustomerId('');
       setCustomerSearch('');
     }
-  }, [isRepairCustomerLocked, isWalkIn]);
+  }, [isCustomerLocked, isWalkIn]);
 
   useEffect(() => {
     if (documentType === 'quote') {
@@ -246,6 +313,59 @@ export function PosPage() {
     setDocumentType('invoice');
   }, [importedRepairOrderId, repairBillingQuery.data?.billing, repairOrderIdParam]);
 
+  useEffect(() => {
+    const billing = projectBillingQuery.data?.billing;
+    if (!projectIdParam || !billing || importedProjectId === projectIdParam) {
+      return;
+    }
+
+    const importedLines: CartLine[] = (billing.materials ?? []).map((material: any) => ({
+      kind: 'project_material' as const,
+      key: `project-material-${material.project_material_id}`,
+      projectId: Number(material.project_id),
+      projectMaterialId: Number(material.project_material_id),
+      productId: Number(material.product_id),
+      reservationId: Number(material.reservation_id),
+      description: material.product_name_snapshot,
+      sku: material.product_sku ?? '',
+      categoryName: material.category_name ?? '',
+      qty: numeric(material.quantity),
+      unitPrice: numeric(material.current_sale_price),
+    }));
+
+    setCart(importedLines);
+    setImportedProjectId(projectIdParam);
+    if (billing.project?.customer_id) {
+      setIsWalkIn(false);
+      setCustomerId(String(billing.project.customer_id));
+    }
+    setDocumentType('invoice');
+  }, [importedProjectId, projectBillingQuery.data?.billing, projectIdParam]);
+
+  useEffect(() => {
+    if (!routeDraft || importedDraftKey === location.key) {
+      return;
+    }
+
+    const importedLines: CartLine[] = (routeDraft.lines ?? []).map((line, index) => ({
+      kind: 'manual' as const,
+      key: `manual-${routeDraft.context?.kind ?? 'draft'}-${routeDraft.context?.id ?? 'state'}-${index}`,
+      description: line.description,
+      qty: numeric(line.qty),
+      unitPrice: numeric(line.unitPrice),
+      sku: line.sku ?? null,
+      categoryName: line.categoryName ?? null,
+      sourceType: line.sourceType ?? routeDraft.context?.kind ?? null,
+      sourceId: line.sourceId ?? routeDraft.context?.id ?? null,
+    }));
+
+    setCart(importedLines);
+    setDocumentType(routeDraft.documentType ?? 'quote');
+    setIsWalkIn(routeDraft.isWalkIn ?? !routeDraft.customerId);
+    setCustomerId(routeDraft.customerId ? String(routeDraft.customerId) : '');
+    setImportedDraftKey(location.key);
+  }, [importedDraftKey, location.key, routeDraft]);
+
   const filteredProducts = useMemo(() => {
     const items = [...(productsQuery.data?.items ?? [])];
     const filtered = items.filter((product) => {
@@ -262,6 +382,9 @@ export function PosPage() {
         return false;
       }
       if (scopeFilter === 'creative' && !isEnabled(product.show_in_creative)) {
+        return false;
+      }
+      if (scopeFilter === 'projects' && !isEnabled(product.show_in_projects)) {
         return false;
       }
       if (stockFilter === 'in-stock' && available <= 0) {
@@ -321,6 +444,7 @@ export function PosPage() {
   const amountReceivedValue = numeric(amountReceived);
   const changeDue = Math.max(amountReceivedValue - subtotal, 0);
   const repairContext = repairBillingQuery.data?.billing ?? null;
+  const projectContext = projectBillingQuery.data?.billing ?? null;
 
   const productColumns = useMemo<DataTableColumn<Product>[]>(() => [
     {
@@ -458,7 +582,13 @@ export function PosPage() {
 
     setCart((current) =>
       current.map((item, currentIndex) => {
-        if (currentIndex !== index || item.kind !== 'product') {
+        if (currentIndex !== index) {
+          return item;
+        }
+        if (item.kind === 'manual') {
+          return { ...item, qty: normalizeQuantityValue(value) };
+        }
+        if (item.kind !== 'product') {
           return item;
         }
         const nextQty = normalizeQuantityValue(value);
@@ -552,6 +682,7 @@ export function PosPage() {
       const created = await createInvoice.mutateAsync({
         customerId: isWalkIn ? null : Number(customerId),
         repairOrderId: activeRepairOrderId,
+        projectId: activeProjectId,
         isWalkIn,
         documentType,
         lines: cart.map((item) => {
@@ -563,10 +694,30 @@ export function PosPage() {
               unitPrice: item.unitPrice,
             };
           }
+          if (item.kind === 'manual') {
+            return {
+              lineType: 'manual' as const,
+              description: item.description,
+              quantity: item.qty,
+              unitPrice: item.unitPrice,
+              sku: item.sku ?? null,
+              categoryName: item.categoryName ?? null,
+              sourceType: item.sourceType ?? null,
+              sourceId: item.sourceId ?? null,
+            };
+          }
           if (item.kind === 'repair_service') {
             return {
               lineType: 'repair_service' as const,
               repairOrderServiceId: item.repairOrderServiceId,
+              quantity: item.qty,
+              unitPrice: item.unitPrice,
+            };
+          }
+          if (item.kind === 'project_material') {
+            return {
+              lineType: 'project_material' as const,
+              projectMaterialId: item.projectMaterialId,
               quantity: item.qty,
               unitPrice: item.unitPrice,
             };
@@ -623,6 +774,12 @@ export function PosPage() {
     if (item.kind === 'product') {
       return item.product.sku;
     }
+    if (item.kind === 'manual') {
+      return item.categoryName || t('sales.labels.manualLine');
+    }
+    if (item.kind === 'project_material') {
+      return `${t('projects.materials')} • ${item.sku || '-'}`;
+    }
     if (item.kind === 'repair_part') {
       return `${t('repair.parts')} • ${item.sku || '-'}`;
     }
@@ -644,6 +801,7 @@ export function PosPage() {
 
       {errorMessage ? <div className="notice error" role="alert">{errorMessage}</div> : null}
       {repairBillingQuery.isError ? <div className="notice error" role="alert">{t('sales.errors.generic')}</div> : null}
+      {projectBillingQuery.isError ? <div className="notice error" role="alert">{t('sales.errors.generic')}</div> : null}
 
       <section className="pos-grid">
         <aside className="pos-products-panel">
@@ -681,6 +839,7 @@ export function PosPage() {
                   <option value="sales">{t('sales.filters.scopeSales')}</option>
                   <option value="repair">{t('sales.filters.scopeRepair')}</option>
                   <option value="creative">{t('sales.filters.scopeCreative')}</option>
+                  <option value="projects">{t('sales.filters.scopeProjects')}</option>
                 </Select>
                 <Select value={stockFilter} onChange={(event) => setStockFilter(event.target.value as StockFilterMode)} label={t('sales.fields.stockLevel')}>
                   <option value="all">{t('sales.filters.stockAll')}</option>
@@ -729,6 +888,37 @@ export function PosPage() {
             </div>
           ) : null}
 
+          {!repairContext && projectContext ? (
+            <div className="pos-card pos-repair-context-card">
+              <div className="pos-card-heading">
+                <div>
+                  <h2>{projectContext.project?.project_code ?? t('projects.detailFallback', { id: projectIdParam })}</h2>
+                  <p>{projectContext.project?.customer_name} • {projectContext.project?.title}</p>
+                </div>
+                <span className="count-pill">{(projectContext.materials ?? []).length.toLocaleString()}</span>
+              </div>
+              <div className="repair-context-summary">
+                <div><strong>{t('projects.materials')}:</strong> {(projectContext.materials ?? []).length}</div>
+                <div><strong>{t('sales.total')}:</strong> {formatSalesMoney((projectContext.materials ?? []).reduce((sum: number, line: any) => sum + numeric(line.line_total), 0), language)}</div>
+              </div>
+            </div>
+          ) : null}
+
+          {!repairContext && !projectContext && routeDraft?.context ? (
+            <div className="pos-card pos-repair-context-card">
+              <div className="pos-card-heading">
+                <div>
+                  <h2>{routeDraft.context.code || t('sales.labels.manualSource')}</h2>
+                  <p>{routeDraft.context.title || t('sales.labels.manualLine')}</p>
+                </div>
+                <span className="count-pill">{(routeDraft.lines ?? []).length.toLocaleString()}</span>
+              </div>
+              <div className="repair-context-summary">
+                <div><strong>{t('sales.labels.manualLine')}:</strong> {routeDraft.context.customerName || t('sales.empty.customer')}</div>
+              </div>
+            </div>
+          ) : null}
+
           <div className="pos-card pos-cart-card">
             <div className="pos-card-heading">
               <div>
@@ -769,7 +959,7 @@ export function PosPage() {
                             min={0.0001}
                             step="0.0001"
                             value={String(item.qty)}
-                            disabled={item.kind !== 'product'}
+                            disabled={item.kind !== 'product' && item.kind !== 'manual'}
                             onChange={(event) => updateQty(index, Number((event.target as HTMLInputElement).value))}
                           />
                         </td>
@@ -811,25 +1001,27 @@ export function PosPage() {
               <option value="quote">{t('sales.documentTypes.quote')}</option>
             </Select>
 
-            <Checkbox label={t('sales.walkIn')} checked={isWalkIn} disabled={isRepairCustomerLocked} onChange={(event) => setIsWalkIn(event.target.checked)} />
+            <Checkbox label={t('sales.walkIn')} checked={isWalkIn} disabled={isCustomerLocked} onChange={(event) => setIsWalkIn(event.target.checked)} />
 
             {!isWalkIn ? (
               <>
-                {!isRepairCustomerLocked ? (
+                {!isCustomerLocked ? (
                   <SearchInput
                     placeholder={t('sales.fields.searchCustomers')}
                     value={customerSearch}
                     onChange={(event) => setCustomerSearch((event.target as HTMLInputElement).value)}
                   />
                 ) : null}
-                <Select value={customerId} onChange={(event) => setCustomerId(event.target.value)} label={t('sales.fields.customerSelect')} disabled={isRepairCustomerLocked}>
+                <Select value={customerId} onChange={(event) => setCustomerId(event.target.value)} label={t('sales.fields.customerSelect')} disabled={isCustomerLocked}>
                   <option value="">{t('sales.fields.customerSelect')}</option>
                   {(customersQuery.data?.items ?? []).map((customer) => (
                     <option key={customer.id} value={customer.id}>{customer.name}</option>
                   ))}
                 </Select>
-                {isRepairCustomerLocked && repairContext?.order?.customer_name ? (
-                  <div className="notice">{repairContext.order.customer_name}</div>
+                {isCustomerLocked ? (
+                  <div className="notice">
+                    {repairContext?.order?.customer_name || projectContext?.project?.customer_name || routeDraft?.context?.customerName || t('sales.empty.customer')}
+                  </div>
                 ) : null}
               </>
             ) : null}

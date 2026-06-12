@@ -44,11 +44,17 @@ export const projectsApi = {
     customerId?: number | null;
     title: string;
     description?: string | null;
+    plannedStartAt?: string | null;
+    plannedEndAt?: string | null;
+    assignedUserId?: number | null;
   }) {
     return httpClient.post<{ project: Project }>('/api/projects', payload);
   },
   getProject(id: number | string) {
     return httpClient.get<{ project: Project }>(`/api/projects/${id}`);
+  },
+  getProjectBilling(id: number | string) {
+    return httpClient.get<{ billing: { project: ProjectListItem; materials: any[] } }>(`/api/projects/${id}/billing`);
   },
   addSite(id: number | string, payload: any) {
     return httpClient.post<{ site: any }>(`/api/projects/${id}/sites`, payload);

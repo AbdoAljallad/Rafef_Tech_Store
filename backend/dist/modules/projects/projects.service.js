@@ -30,6 +30,9 @@ export class ProjectsService {
             throw new AppError(404, 'NOT_FOUND', 'Project not found');
         return project;
     }
+    getProjectBilling(id) {
+        return this.repo.getProjectBilling(id);
+    }
     async addSite(projectId, input, userId, ip) {
         const site = await this.repo.addSite(projectId, input, userId);
         await this.audit.log({ actorUserId: userId, actionCode: 'project.site.added', module: 'projects', entityType: 'projects', entityId: projectId, newValues: input, ipAddress: ip });

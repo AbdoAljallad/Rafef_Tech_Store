@@ -5,10 +5,10 @@ import { asyncHandler } from '../../shared/http/asyncHandler.js';
 const router = Router();
 router.use(requireAuth);
 function getLinkPath(event) {
-    if (event.module === 'repair' && event.entity_type === 'repair_order' && event.entity_id) {
+    if (event.module === 'repair' && ['repair_order', 'repair_orders'].includes(event.entity_type ?? '') && event.entity_id) {
         return `/repair/orders/${event.entity_id}`;
     }
-    if (event.module === 'sales' && event.entity_type === 'sales_invoice' && event.entity_id) {
+    if (event.module === 'sales' && ['sales_invoice', 'sales_invoices'].includes(event.entity_type ?? '') && event.entity_id) {
         return `/sales/invoices/${event.entity_id}`;
     }
     if (event.module === 'crm' && event.entity_type === 'customer' && event.entity_id) {
@@ -17,7 +17,7 @@ function getLinkPath(event) {
     if (event.module === 'inventory') {
         return '/inventory/stock';
     }
-    if (event.module === 'projects' && event.entity_type === 'project' && event.entity_id) {
+    if (event.module === 'projects' && ['project', 'projects'].includes(event.entity_type ?? '') && event.entity_id) {
         return `/projects/${event.entity_id}`;
     }
     return '/events';

@@ -24,6 +24,9 @@ router.post('/projects', requirePermission('projects.create'), asyncHandler(asyn
 router.get('/projects/:id', requirePermission('projects.view'), asyncHandler(async (req, res) => {
     res.json({ project: await projects.getProject(parseId(req.params.id)) });
 }));
+router.get('/projects/:id/billing', requirePermission('projects.view'), asyncHandler(async (req, res) => {
+    res.json({ billing: await projects.getProjectBilling(parseId(req.params.id)) });
+}));
 router.post('/projects/:id/sites', requirePermission('projects.update'), asyncHandler(async (req, res) => {
     res.status(201).json({ site: await projects.addSite(parseId(req.params.id), projectSiteSchema.parse(req.body), req.currentUser.id, req.ip) });
 }));

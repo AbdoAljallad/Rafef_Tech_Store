@@ -39,6 +39,10 @@ export class ProjectsService {
     return project;
   }
 
+  getProjectBilling(id: number) {
+    return this.repo.getProjectBilling(id);
+  }
+
   async addSite(projectId: number, input: ProjectSiteInput, userId: number, ip?: string | null) {
     const site = await this.repo.addSite(projectId, input, userId);
     await this.audit.log({ actorUserId: userId, actionCode: 'project.site.added', module: 'projects', entityType: 'projects', entityId: projectId, newValues: input, ipAddress: ip });

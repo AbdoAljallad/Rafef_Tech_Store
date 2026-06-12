@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { CheckCircle2, Clock3, Plus, Wrench } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { repairApi } from '../../modules/repair/api/repair.api';
 import { crmApi } from '../../modules/crm/api/crm.api';
 import { DataTable } from '../../shared/components/DataTable/DataTable';
+import { ErrorState } from '../../shared/components/ErrorState/ErrorState';
 import { FormDrawer } from '../../shared/components/FormDrawer/FormDrawer';
 import { SearchInput } from '../../shared/components/SearchInput/SearchInput';
+import { Badge } from '../../shared/ui/Badge';
 import { Button } from '../../shared/ui/Button';
 import { Input } from '../../shared/ui/Input';
 import { Select } from '../../shared/ui/Select';
@@ -48,6 +50,8 @@ export function OrdersPage() {
   const { t } = useTranslation(['app', 'statuses']);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deviceMode, setDeviceMode] = useState<DeviceMode>('existing');
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [customerSearch, setCustomerSearch] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -106,15 +110,41 @@ export function OrdersPage() {
   const filteredModels = useMemo(() => {
     const items = modelsQuery.data?.items ?? [];
     return items.filter((model) => {
-      if (selectedCategoryId && Number(model.category_id ?? model.categoryId) !== Number(selectedCategoryId)) {
+      if (selectedCategoryId && Number(model.category_id) !== Number(selectedCategoryId)) {
         return false;
       }
-      if (selectedBrandId && Number(model.brand_id ?? model.brandId) !== Number(selectedBrandId)) {
+      if (selectedBrandId && Number(model.brand_id) !== Number(selectedBrandId)) {
         return false;
       }
       return true;
     });
   }, [modelsQuery.data?.items, selectedBrandId, selectedCategoryId]);
+
+  const orders = ordersQuery.data?.items ?? [];
+  const filteredOrders = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+    return orders.filter((order: any) => {
+      const matchesSearch =
+        normalizedSearch.length === 0 ||
+        String(order.order_code ?? '').toLowerCase().includes(normalizedSearch) ||
+        String(order.customer_name ?? '').toLowerCase().includes(normalizedSearch) ||
+        String(order.device_name ?? '').toLowerCase().includes(normalizedSearch);
+      const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [orders, search, statusFilter]);
+
+  const activeCount = orders.filter((order: any) => ['new', 'inspection', 'waiting_customer_approval', 'waiting_part', 'in_repair'].includes(order.status)).length;
+  const readyCount = orders.filter((order: any) => order.status === 'ready_for_delivery').length;
+  const deliveredCount = orders.filter((order: any) => order.status === 'delivered').length;
+
+  function statusTone(status: string) {
+    if (status === 'delivered') return 'success' as const;
+    if (status === 'ready_for_delivery') return 'info' as const;
+    if (status === 'cancelled') return 'danger' as const;
+    if (status === 'waiting_customer_approval' || status === 'waiting_part') return 'warning' as const;
+    return 'neutral' as const;
+  }
 
   function handleDrawerClose() {
     setIsCreateOpen(false);
@@ -173,7 +203,7 @@ export function OrdersPage() {
   }
 
   return (
-    <>
+    <div className="ops-dashboard">
       <header className="page-header">
         <div>
           <p className="eyebrow">{t('repair.module')}</p>
@@ -184,8 +214,54 @@ export function OrdersPage() {
         </Button>
       </header>
 
-      <DataTable
-        rows={ordersQuery.data?.items ?? []}
+      <section className="panel ops-hero">
+        <div className="ops-hero-copy">
+          <h2>{t('repair.boardTitle')}</h2>
+          <p className="muted">{t('repair.boardDescription')}</p>
+        </div>
+      </section>
+
+      <section className="ops-summary-grid">
+        <article className="panel ops-summary-card">
+          <Wrench size={20} />
+          <strong>{orders.length}</strong>
+          <span>{t('repair.stats.total')}</span>
+        </article>
+        <article className="panel ops-summary-card">
+          <Clock3 size={20} />
+          <strong>{activeCount}</strong>
+          <span>{t('repair.stats.active')}</span>
+        </article>
+        <article className="panel ops-summary-card">
+          <CheckCircle2 size={20} />
+          <strong>{readyCount}</strong>
+          <span>{t('repair.stats.ready')}</span>
+        </article>
+        <article className="panel ops-summary-card">
+          <CheckCircle2 size={20} />
+          <strong>{deliveredCount}</strong>
+          <span>{t('repair.stats.delivered')}</span>
+        </article>
+      </section>
+
+      <section className="panel ops-panel">
+        <div className="ops-filter-grid">
+          <div className="ops-filter-search">
+            <span>{t('repair.filters.search')}</span>
+            <SearchInput value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t('repair.filters.search')} />
+          </div>
+          <Select label={t('repair.status')} value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <option value="all">{t('repair.filters.allStatuses')}</option>
+            {['new', 'inspection', 'waiting_customer_approval', 'waiting_part', 'in_repair', 'ready_for_delivery', 'delivered', 'cancelled'].map((status) => (
+              <option key={status} value={status}>{t(`statuses:repair.${status}`)}</option>
+            ))}
+          </Select>
+        </div>
+
+        {ordersQuery.isError ? <ErrorState title={t('repair.loadFailed')} description={t('repair.errors.generic')} /> : null}
+
+        <DataTable
+        rows={filteredOrders}
         isLoading={ordersQuery.isLoading}
         emptyText={ordersQuery.isError ? t('repair.loadFailed') : t('repair.noOrders')}
         getRowKey={(row) => row.id}
@@ -194,9 +270,14 @@ export function OrdersPage() {
           { key: 'code', header: t('repair.code'), render: (row) => row.order_code },
           { key: 'customer', header: t('repair.customer'), render: (row) => row.customer_name ?? row.customer_id },
           { key: 'device', header: t('repair.device'), render: (row) => row.device_name ?? row.device_id },
-          { key: 'status', header: t('repair.status'), render: (row) => String(t(`statuses:repair.${row.status}`)) },
+          {
+            key: 'status',
+            header: t('repair.status'),
+            render: (row) => <Badge tone={statusTone(row.status)}>{String(t(`statuses:repair.${row.status}`))}</Badge>,
+          },
         ]}
       />
+      </section>
 
       <FormDrawer title={t('repair.createRepair')} isOpen={isCreateOpen} onClose={handleDrawerClose}>
         <form onSubmit={form.handleSubmit(handleCreate)} className="stack">
@@ -343,6 +424,6 @@ export function OrdersPage() {
           </div>
         </form>
       </FormDrawer>
-    </>
+    </div>
   );
 }

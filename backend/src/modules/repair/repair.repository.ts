@@ -111,7 +111,7 @@ type BalanceLockRow = RowDataPacket & {
 
 type LinkedSalesDocumentRow = RowDataPacket & {
   id: number;
-  invoice_number: string | null;
+  invoice_code: string | null;
   document_type: string | null;
   status: string | null;
 };
@@ -688,7 +688,33 @@ export class RepairRepository {
       [orderRow.customer_id],
     );
     const device = await this.findDevice(orderRow.device_id);
-    return { order, customer: customers[0], device };
+    const services = (order as { services?: RepairServiceRow[] }).services ?? [];
+    const parts = (order as { parts?: RepairPartRow[] }).parts ?? [];
+    const serviceTotal = services.reduce(
+      (sum, service) => sum + toNumber(service.quantity) * toNumber(service.unit_price_snapshot),
+      0,
+    );
+    const partTotal = parts.reduce(
+      (sum, part) => sum + toNumber(part.quantity) * toNumber(part.current_sale_price),
+      0,
+    );
+    const subtotal = Number((serviceTotal + partTotal).toFixed(2));
+
+    return {
+      order,
+      customer: customers[0] ?? null,
+      device,
+      services,
+      parts: parts.map((part) => ({
+        ...part,
+        unit_price_snapshot: part.current_sale_price ?? 0,
+      })),
+      totals: {
+        subtotal,
+        tax: 0,
+        total: subtotal,
+      },
+    };
   }
 
   async requireOrder(id: number) {
@@ -884,7 +910,7 @@ export class RepairRepository {
 
   private async listLinkedSalesDocumentsForUpdate(connection: PoolConnection, orderId: number) {
     const [rows] = await connection.execute<LinkedSalesDocumentRow[]>(
-      `SELECT id, invoice_number, document_type, status
+      `SELECT id, invoice_code, document_type, status
        FROM sales_invoices
        WHERE repair_order_id = ?
        FOR UPDATE`,

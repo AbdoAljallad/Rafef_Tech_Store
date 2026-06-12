@@ -453,7 +453,26 @@ export class RepairRepository {
         const orderRow = order;
         const [customers] = await pool.execute('SELECT * FROM crm_customers WHERE id = ?', [orderRow.customer_id]);
         const device = await this.findDevice(orderRow.device_id);
-        return { order, customer: customers[0], device };
+        const services = order.services ?? [];
+        const parts = order.parts ?? [];
+        const serviceTotal = services.reduce((sum, service) => sum + toNumber(service.quantity) * toNumber(service.unit_price_snapshot), 0);
+        const partTotal = parts.reduce((sum, part) => sum + toNumber(part.quantity) * toNumber(part.current_sale_price), 0);
+        const subtotal = Number((serviceTotal + partTotal).toFixed(2));
+        return {
+            order,
+            customer: customers[0] ?? null,
+            device,
+            services,
+            parts: parts.map((part) => ({
+                ...part,
+                unit_price_snapshot: part.current_sale_price ?? 0,
+            })),
+            totals: {
+                subtotal,
+                tax: 0,
+                total: subtotal,
+            },
+        };
     }
     async requireOrder(id) {
         const order = await this.findOrderHeader(id);
@@ -591,7 +610,7 @@ export class RepairRepository {
         return rows;
     }
     async listLinkedSalesDocumentsForUpdate(connection, orderId) {
-        const [rows] = await connection.execute(`SELECT id, invoice_number, document_type, status
+        const [rows] = await connection.execute(`SELECT id, invoice_code, document_type, status
        FROM sales_invoices
        WHERE repair_order_id = ?
        FOR UPDATE`, [orderId]);
