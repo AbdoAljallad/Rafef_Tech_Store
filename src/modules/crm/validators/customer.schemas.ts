@@ -16,6 +16,7 @@ const optionalImage = z
   .optional()
   .nullable()
   .refine((value) => !value || value.startsWith('data:image/'), 'Загрузите корректное изображение')
+  .refine((value) => !value || value.length <= 350_000, 'Image is too large')
   .transform((value) => value || null);
 
 export const contactFormSchema = z

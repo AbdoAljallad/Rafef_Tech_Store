@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { asyncHandler } from '../../shared/http/asyncHandler.js';
 import { parseId } from '../../shared/http/ids.js';
 import { parsePagination } from '../../shared/http/pagination.js';
+import { resolveRequestLanguage } from '../../shared/localization/requestLanguage.js';
 import { requireAuth, requirePermission } from '../auth/auth.middleware.js';
 import {
   installedAssetSchema,
@@ -19,29 +20,33 @@ const projects = new ProjectsService();
 
 router.use(requireAuth);
 
-router.get('/projects/types', requirePermission('projects.view'), asyncHandler(async (_req, res) => {
-  res.json({ items: await projects.listTypes() });
+router.get('/projects/types', requirePermission('projects.view'), asyncHandler(async (req, res) => {
+  res.json({ items: await projects.listTypes(resolveRequestLanguage(req)) });
 }));
 
 router.post('/projects/types', requirePermission('projects.create'), asyncHandler(async (req, res) => {
-  res.status(201).json({ projectType: await projects.createType(projectTypeSchema.parse(req.body), req.currentUser!.id) });
+  res.status(201).json({
+    projectType: await projects.createType(projectTypeSchema.parse(req.body), req.currentUser!.id, resolveRequestLanguage(req)),
+  });
 }));
 
 router.get('/projects', requirePermission('projects.view'), asyncHandler(async (req, res) => {
   const { pageSize, offset } = parsePagination(req.query);
-  res.json({ items: await projects.listProjects({ offset, limit: pageSize }) });
+  res.json({ items: await projects.listProjects({ offset, limit: pageSize, language: resolveRequestLanguage(req) }) });
 }));
 
 router.post('/projects', requirePermission('projects.create'), asyncHandler(async (req, res) => {
-  res.status(201).json({ project: await projects.createProject(projectCreateSchema.parse(req.body), req.currentUser!.id, req.ip) });
+  res.status(201).json({
+    project: await projects.createProject(projectCreateSchema.parse(req.body), req.currentUser!.id, req.ip, resolveRequestLanguage(req)),
+  });
 }));
 
 router.get('/projects/:id', requirePermission('projects.view'), asyncHandler(async (req, res) => {
-  res.json({ project: await projects.getProject(parseId(req.params.id)) });
+  res.json({ project: await projects.getProject(parseId(req.params.id), resolveRequestLanguage(req)) });
 }));
 
 router.get('/projects/:id/billing', requirePermission('projects.view'), asyncHandler(async (req, res) => {
-  res.json({ billing: await projects.getProjectBilling(parseId(req.params.id)) });
+  res.json({ billing: await projects.getProjectBilling(parseId(req.params.id), resolveRequestLanguage(req)) });
 }));
 
 router.post('/projects/:id/sites', requirePermission('projects.update'), asyncHandler(async (req, res) => {
@@ -49,11 +54,27 @@ router.post('/projects/:id/sites', requirePermission('projects.update'), asyncHa
 }));
 
 router.post('/projects/:id/status', requirePermission('projects.update'), asyncHandler(async (req, res) => {
-  res.json({ project: await projects.changeStatus(parseId(req.params.id), projectStatusChangeSchema.parse(req.body), req.currentUser!.id, req.ip) });
+  res.json({
+    project: await projects.changeStatus(
+      parseId(req.params.id),
+      projectStatusChangeSchema.parse(req.body),
+      req.currentUser!.id,
+      req.ip,
+      resolveRequestLanguage(req),
+    ),
+  });
 }));
 
 router.post('/projects/:id/materials', requirePermission('projects.materials.reserve'), asyncHandler(async (req, res) => {
-  res.status(201).json({ material: await projects.addMaterial(parseId(req.params.id), projectMaterialSchema.parse(req.body), req.currentUser!.id, req.ip) });
+  res.status(201).json({
+    material: await projects.addMaterial(
+      parseId(req.params.id),
+      projectMaterialSchema.parse(req.body),
+      req.currentUser!.id,
+      req.ip,
+      resolveRequestLanguage(req),
+    ),
+  });
 }));
 
 router.post('/projects/:id/assets', requirePermission('projects.update'), asyncHandler(async (req, res) => {
@@ -65,7 +86,7 @@ router.post('/projects/:id/notes', requirePermission('projects.update'), asyncHa
 }));
 
 router.get('/projects/:id/summary', requirePermission('projects.view'), asyncHandler(async (req, res) => {
-  res.json({ summary: await projects.summary(parseId(req.params.id)) });
+  res.json({ summary: await projects.summary(parseId(req.params.id), resolveRequestLanguage(req)) });
 }));
 
 export { router as projectsRouter };

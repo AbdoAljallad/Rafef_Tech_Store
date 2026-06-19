@@ -1,4 +1,5 @@
 import { AppError } from '../../shared/errors/AppError.js';
+import { EntityTranslationService } from '../../shared/localization/entityTranslation.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { CatalogRepository } from './catalog.repository.js';
 function isDuplicateKey(error) {
@@ -7,24 +8,33 @@ function isDuplicateKey(error) {
 export class CatalogService {
     catalogRepository;
     auditService;
-    constructor(catalogRepository = new CatalogRepository(), auditService = new AuditService()) {
+    translationService;
+    constructor(catalogRepository = new CatalogRepository(), auditService = new AuditService(), translationService = new EntityTranslationService()) {
         this.catalogRepository = catalogRepository;
         this.auditService = auditService;
+        this.translationService = translationService;
     }
     listProducts(params) {
         return this.catalogRepository.listProducts(params);
     }
-    async getProduct(id) {
-        const product = await this.catalogRepository.findProductById(id);
+    async getProduct(id, language) {
+        const product = await this.catalogRepository.findProductById(id, language);
         if (!product)
             throw new AppError(404, 'NOT_FOUND', 'Product not found');
         return product;
     }
-    async createProduct(input, actorUserId, ipAddress) {
+    async createProduct(input, actorUserId, ipAddress, language) {
         try {
-            const product = await this.catalogRepository.createProduct(input, actorUserId);
+            const product = await this.catalogRepository.createProduct(input, actorUserId, language);
             if (!product)
                 throw new AppError(500, 'INTERNAL_ERROR', 'Failed to create product');
+            await this.translationService.syncEntityField({
+                entityType: 'catalog_products',
+                entityId: product.id,
+                fieldName: 'default_name',
+                text: input.defaultName,
+                requestedLanguage: language,
+            });
             await this.auditService.log({
                 actorUserId,
                 actionCode: 'catalog.product.created',
@@ -34,7 +44,7 @@ export class CatalogService {
                 newValues: input,
                 ipAddress,
             });
-            return product;
+            return this.getProduct(product.id, language);
         }
         catch (error) {
             if (isDuplicateKey(error)) {
@@ -43,12 +53,21 @@ export class CatalogService {
             throw error;
         }
     }
-    async updateProduct(id, input, actorUserId, ipAddress) {
-        const before = await this.getProduct(id);
+    async updateProduct(id, input, actorUserId, ipAddress, language) {
+        const before = await this.getProduct(id, language);
         try {
-            const product = await this.catalogRepository.updateProduct(id, input, actorUserId);
+            const product = await this.catalogRepository.updateProduct(id, input, actorUserId, language);
             if (!product)
                 throw new AppError(404, 'NOT_FOUND', 'Product not found');
+            if (input.defaultName) {
+                await this.translationService.syncEntityField({
+                    entityType: 'catalog_products',
+                    entityId: id,
+                    fieldName: 'default_name',
+                    text: input.defaultName,
+                    requestedLanguage: language,
+                });
+            }
             await this.auditService.log({
                 actorUserId,
                 actionCode: 'catalog.product.updated',
@@ -59,7 +78,7 @@ export class CatalogService {
                 newValues: input,
                 ipAddress,
             });
-            return product;
+            return this.getProduct(id, language);
         }
         catch (error) {
             if (isDuplicateKey(error)) {
@@ -68,8 +87,8 @@ export class CatalogService {
             throw error;
         }
     }
-    async changePrice(id, input, actorUserId, ipAddress) {
-        const product = await this.catalogRepository.changePrice(id, input, actorUserId);
+    async changePrice(id, input, actorUserId, ipAddress, language) {
+        const product = await this.catalogRepository.changePrice(id, input, actorUserId, language);
         if (!product)
             throw new AppError(404, 'NOT_FOUND', 'Product not found');
         await this.auditService.log({
@@ -83,29 +102,44 @@ export class CatalogService {
         });
         return product;
     }
-    async getProductByBarcode(barcode) {
-        const product = await this.catalogRepository.findProductByBarcode(barcode);
+    async getProductByBarcode(barcode, language) {
+        const product = await this.catalogRepository.findProductByBarcode(barcode, language);
         if (!product)
             throw new AppError(404, 'NOT_FOUND', 'Product not found');
         return product;
     }
-    listCategories() {
-        return this.catalogRepository.listCategories();
+    listCategories(language) {
+        return this.catalogRepository.listCategories(language);
     }
-    createCategory(input) {
-        return this.catalogRepository.createCategory(input);
+    async createCategory(input, language) {
+        const category = await this.catalogRepository.createCategory(input);
+        await this.translationService.syncEntityField({
+            entityType: 'catalog_categories',
+            entityId: Number(category?.id),
+            fieldName: 'default_name',
+            text: input.defaultName,
+            requestedLanguage: language,
+        });
+        return category;
     }
     listUnits() {
         return this.catalogRepository.listUnits();
     }
-    listServices(module) {
-        return this.catalogRepository.listServices(module);
+    listServices(module, language) {
+        return this.catalogRepository.listServices(module, language);
     }
-    listSuppliers() {
-        return this.catalogRepository.listSuppliers();
+    listSuppliers(language) {
+        return this.catalogRepository.listSuppliers(language);
     }
-    async createSupplier(input, actorUserId, ipAddress) {
-        const supplier = await this.catalogRepository.createSupplier(input, actorUserId);
+    async createSupplier(input, actorUserId, ipAddress, language) {
+        const supplier = await this.catalogRepository.createSupplier(input, actorUserId, language);
+        await this.translationService.syncEntityField({
+            entityType: 'catalog_suppliers',
+            entityId: Number(supplier?.id),
+            fieldName: 'name',
+            text: input.name,
+            requestedLanguage: language,
+        });
         await this.auditService.log({
             actorUserId,
             actionCode: 'catalog.supplier.created',
@@ -117,13 +151,13 @@ export class CatalogService {
         });
         return supplier;
     }
-    async listProductSuppliers(productId) {
-        await this.getProduct(productId);
-        return this.catalogRepository.listProductSuppliers(productId);
+    async listProductSuppliers(productId, language) {
+        await this.getProduct(productId, language);
+        return this.catalogRepository.listProductSuppliers(productId, language);
     }
-    async replaceProductSuppliers(productId, suppliers, actorUserId, ipAddress) {
-        await this.getProduct(productId);
-        const updated = await this.catalogRepository.replaceProductSuppliers(productId, suppliers);
+    async replaceProductSuppliers(productId, suppliers, actorUserId, ipAddress, language) {
+        await this.getProduct(productId, language);
+        await this.catalogRepository.replaceProductSuppliers(productId, suppliers);
         await this.auditService.log({
             actorUserId,
             actionCode: 'catalog.product.suppliers_updated',
@@ -133,6 +167,6 @@ export class CatalogService {
             newValues: suppliers,
             ipAddress,
         });
-        return updated;
+        return this.catalogRepository.listProductSuppliers(productId, language);
     }
 }

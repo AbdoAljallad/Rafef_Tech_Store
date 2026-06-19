@@ -1,4 +1,5 @@
 import { pool } from '../../database/mysql.js';
+import { normalizeUiLanguage } from '../../shared/localization/language.js';
 function mapOptional(value) {
     return value === undefined ? null : value;
 }
@@ -78,42 +79,112 @@ function deriveLegacyFields(contacts) {
         email: primaryEmail,
     };
 }
+function buildCustomerSearchFilter(search) {
+    const trimmedSearch = search?.trim();
+    const values = [];
+    let where = 'WHERE c.is_active = TRUE';
+    if (trimmedSearch) {
+        where += ` AND (
+      c.name LIKE ?
+      OR c.phone_primary LIKE ?
+      OR c.phone_secondary LIKE ?
+      OR c.customer_code LIKE ?
+      OR EXISTS (
+        SELECT 1
+        FROM entity_translations et
+        WHERE et.entity_type = 'crm_customers'
+          AND et.entity_id = c.id
+          AND et.field_name = 'name'
+          AND et.text_value LIKE ?
+      )
+    )`;
+        const like = `%${trimmedSearch}%`;
+        values.push(like, like, like, like, like);
+    }
+    return { where, values };
+}
+function buildCustomerOrderBy(sort) {
+    switch (sort) {
+        case 'name-asc':
+            return 'ORDER BY name ASC, c.id DESC';
+        case 'name-desc':
+            return 'ORDER BY name DESC, c.id DESC';
+        case 'code-asc':
+            return 'ORDER BY c.customer_code ASC, c.id DESC';
+        case 'code-desc':
+            return 'ORDER BY c.customer_code DESC, c.id DESC';
+        case 'created-asc':
+            return 'ORDER BY c.created_at ASC, c.id ASC';
+        case 'created-desc':
+        default:
+            return 'ORDER BY c.created_at DESC, c.id DESC';
+    }
+}
 export class CrmRepository {
     async listCustomers(params) {
-        const search = params.search?.trim();
-        const values = [];
-        let where = 'WHERE c.is_active = TRUE';
-        if (search) {
-            where += ' AND (c.name LIKE ? OR c.phone_primary LIKE ? OR c.phone_secondary LIKE ? OR c.customer_code LIKE ?)';
-            const like = `%${search}%`;
-            values.push(like, like, like, like);
-        }
-        const [rows] = await pool.execute(`SELECT c.*
+        const language = normalizeUiLanguage(params.language);
+        const { where, values } = buildCustomerSearchFilter(params.search);
+        const orderBy = buildCustomerOrderBy(params.sort);
+        const limit = Math.max(1, Math.floor(params.limit));
+        const offset = Math.max(0, Math.floor(params.offset));
+        const [rows] = await pool.execute(`SELECT
+         c.id,
+         c.customer_code,
+         COALESCE(c_name_loc.text_value, c.name) AS name,
+         c.name AS name_original,
+         COALESCE(c_name_loc.source_lang_code, NULL) AS name_source_lang,
+         c.phone_primary,
+         c.phone_secondary,
+         c.email,
+         CASE
+           WHEN c.avatar_url LIKE 'data:image/%' THEN NULL
+           WHEN CHAR_LENGTH(COALESCE(c.avatar_url, '')) > 2048 THEN NULL
+           ELSE c.avatar_url
+         END AS avatar_url,
+         c.customer_type,
+         c.notes,
+         c.is_active,
+         c.is_frozen,
+         c.created_at,
+         c.updated_at
        FROM crm_customers c
+       LEFT JOIN entity_translations c_name_loc
+         ON c_name_loc.entity_type = 'crm_customers'
+         AND c_name_loc.entity_id = c.id
+         AND c_name_loc.field_name = 'name'
+         AND c_name_loc.lang_code = ?
        ${where}
-       ORDER BY c.id DESC`, values);
+       ${orderBy}
+       LIMIT ${limit}
+       OFFSET ${offset}`, [language, ...values]);
         return rows;
     }
     async countCustomers(params) {
-        const search = params.search?.trim();
-        const values = [];
-        let where = 'WHERE c.is_active = TRUE';
-        if (search) {
-            where += ' AND (c.name LIKE ? OR c.phone_primary LIKE ? OR c.phone_secondary LIKE ? OR c.customer_code LIKE ?)';
-            const like = `%${search}%`;
-            values.push(like, like, like, like);
-        }
+        const { where, values } = buildCustomerSearchFilter(params.search);
         const [rows] = await pool.execute(`SELECT COUNT(*) AS total
        FROM crm_customers c
        ${where}`, values);
         return Number(rows[0]?.total ?? 0);
     }
-    async findCustomerById(id) {
-        const [rows] = await pool.execute('SELECT * FROM crm_customers WHERE id = ? LIMIT 1', [id]);
+    async findCustomerById(id, language) {
+        const resolvedLanguage = normalizeUiLanguage(language);
+        const [rows] = await pool.execute(`SELECT
+         c.*,
+         COALESCE(c_name_loc.text_value, c.name) AS name,
+         c.name AS name_original,
+         COALESCE(c_name_loc.source_lang_code, NULL) AS name_source_lang
+       FROM crm_customers c
+       LEFT JOIN entity_translations c_name_loc
+         ON c_name_loc.entity_type = 'crm_customers'
+         AND c_name_loc.entity_id = c.id
+         AND c_name_loc.field_name = 'name'
+         AND c_name_loc.lang_code = ?
+       WHERE c.id = ?
+       LIMIT 1`, [resolvedLanguage, id]);
         return rows[0] ?? null;
     }
-    async findCustomerDetailById(id) {
-        const customer = await this.findCustomerById(id);
+    async findCustomerDetailById(id, language) {
+        const customer = await this.findCustomerById(id, language);
         if (!customer) {
             return null;
         }
@@ -129,7 +200,7 @@ export class CrmRepository {
             notesHistory,
         };
     }
-    async createCustomer(input, userId) {
+    async createCustomer(input, userId, language) {
         const contacts = normalizeContacts(input);
         const derived = deriveLegacyFields(contacts);
         const [result] = await pool.execute(`INSERT INTO crm_customers (
@@ -150,10 +221,10 @@ export class CrmRepository {
         if (contacts.length > 0) {
             await this.replaceContacts(result.insertId, contacts);
         }
-        return this.findCustomerDetailById(result.insertId);
+        return this.findCustomerDetailById(result.insertId, language);
     }
-    async updateCustomer(id, input, userId) {
-        const existing = await this.findCustomerDetailById(id);
+    async updateCustomer(id, input, userId, language) {
+        const existing = await this.findCustomerDetailById(id, language);
         if (!existing) {
             return null;
         }
@@ -195,7 +266,7 @@ export class CrmRepository {
         if (input.contacts !== undefined) {
             await this.replaceContacts(id, nextContacts);
         }
-        return this.findCustomerDetailById(id);
+        return this.findCustomerDetailById(id, language);
     }
     async softDeleteCustomer(id, userId) {
         const [result] = await pool.execute(`UPDATE crm_customers

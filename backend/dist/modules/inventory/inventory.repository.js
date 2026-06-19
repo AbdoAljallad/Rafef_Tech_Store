@@ -1,5 +1,6 @@
 import { pool } from '../../database/mysql.js';
 import { AppError } from '../../shared/errors/AppError.js';
+import { normalizeUiLanguage } from '../../shared/localization/language.js';
 function nullable(value) {
     return value === undefined ? null : value;
 }
@@ -8,24 +9,41 @@ function toNumber(value) {
 }
 export class InventoryRepository {
     async listStock(params) {
+        const language = normalizeUiLanguage(params.language);
         const search = params.search?.trim();
         const values = [];
         let where = 'WHERE p.is_active = TRUE';
         if (search) {
-            where += ' AND (p.default_name LIKE ? OR p.sku LIKE ?)';
+            where += ` AND (
+        p.default_name LIKE ?
+        OR p.sku LIKE ?
+        OR EXISTS (
+          SELECT 1
+          FROM entity_translations et
+          WHERE et.entity_type = 'catalog_products'
+            AND et.entity_id = p.id
+            AND et.field_name = 'default_name'
+            AND et.text_value LIKE ?
+        )
+      )`;
             const like = `%${search}%`;
-            values.push(like, like);
+            values.push(like, like, like);
         }
         const [rows] = await pool.execute(`SELECT
          p.id AS product_id,
          p.sku,
-         p.default_name,
+         COALESCE(p_name_loc.text_value, p.default_name) AS default_name,
          u.name_ru AS unit_name_ru,
          COALESCE(b.quantity_on_hand, 0) AS quantity_on_hand,
          COALESCE(r.quantity_reserved_live, 0) AS quantity_reserved,
          GREATEST(COALESCE(b.quantity_on_hand, 0) - COALESCE(r.quantity_reserved_live, 0), 0) AS quantity_available
        FROM catalog_products p
        INNER JOIN catalog_units u ON u.id = p.unit_id
+       LEFT JOIN entity_translations p_name_loc
+         ON p_name_loc.entity_type = 'catalog_products'
+         AND p_name_loc.entity_id = p.id
+         AND p_name_loc.field_name = 'default_name'
+         AND p_name_loc.lang_code = ?
        LEFT JOIN inventory_stock_balances b ON b.product_id = p.id
        LEFT JOIN (
          SELECT product_id, COALESCE(SUM(quantity), 0) AS quantity_reserved_live
@@ -35,7 +53,7 @@ export class InventoryRepository {
        ) r ON r.product_id = p.id
        ${where}
        ORDER BY p.default_name
-       LIMIT ${params.limit} OFFSET ${params.offset}`, values);
+       LIMIT ${params.limit} OFFSET ${params.offset}`, [language, ...values]);
         return rows;
     }
     async listMovements(productId, params) {

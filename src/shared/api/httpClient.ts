@@ -1,7 +1,28 @@
 import { ApiError } from './apiErrors';
-import { getAccessToken } from './authToken';
+import { getAccessToken, setAccessToken } from './authToken';
 import { env } from '../config/env';
 import type { ApiErrorPayload, ApiRequestOptions } from './types';
+import { getStoredLanguage } from '../localization/languagePreference';
+
+const AUTH_REQUIRED_EVENT = 'rafef:auth-required';
+
+function handleUnauthorized(path: string) {
+  setAccessToken(null);
+
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  if (path.startsWith('/api/auth/login')) {
+    return;
+  }
+
+  window.dispatchEvent(new CustomEvent(AUTH_REQUIRED_EVENT));
+
+  if (window.location.pathname !== '/login') {
+    window.location.assign('/login');
+  }
+}
 
 async function parseResponse<T>(response: Response): Promise<T> {
   const contentType = response.headers.get('content-type') || '';
@@ -41,6 +62,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
       method: options.method || 'GET',
       headers: {
         'Content-Type': 'application/json',
+        'X-Rafef-Language': getStoredLanguage(),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...options.headers,
       },
@@ -53,6 +75,10 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
       code: 'NETWORK_ERROR',
       message: 'Network request failed',
     });
+  }
+
+  if (response.status === 401) {
+    handleUnauthorized(path);
   }
 
   return parseResponse<T>(response);

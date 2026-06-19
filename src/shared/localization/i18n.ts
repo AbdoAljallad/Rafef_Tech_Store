@@ -16,22 +16,7 @@ import arModules from './ar/modules.json';
 import arNavigation from './ar/navigation.json';
 import arStatuses from './ar/statuses.json';
 import arValidation from './ar/validation.json';
-
-export const DEFAULT_LANGUAGE = 'ru';
-
-function getStoredLanguage() {
-  if (typeof window === 'undefined') {
-    return DEFAULT_LANGUAGE;
-  }
-
-  try {
-    const raw = window.localStorage.getItem('rafef-system-preferences');
-    const parsed = raw ? JSON.parse(raw) : null;
-    return parsed?.language === 'ar' ? 'ar' : DEFAULT_LANGUAGE;
-  } catch {
-    return DEFAULT_LANGUAGE;
-  }
-}
+import { DEFAULT_LANGUAGE, getStoredLanguage } from './languagePreference';
 
 i18n.use(initReactI18next).init({
   lng: getStoredLanguage(),

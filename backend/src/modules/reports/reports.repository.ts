@@ -1,5 +1,7 @@
 import type { RowDataPacket } from 'mysql2/promise';
 import { pool } from '../../database/mysql.js';
+import { normalizeUiLanguage, type UiLanguage } from '../../shared/localization/language.js';
+import { localizedFieldExpression } from '../../shared/localization/sql.js';
 
 export type ReportFilters = {
   dateFrom: string | null;
@@ -25,6 +27,48 @@ export type DetailedReportPayload = {
 };
 
 type SqlParams = Record<string, string | number | null>;
+
+const customerNameExpr = localizedFieldExpression({
+  entityType: 'crm_customers',
+  entityIdExpression: 'c.id',
+  fieldName: 'name',
+  fallbackExpression: 'c.name',
+});
+
+const productNameExpr = localizedFieldExpression({
+  entityType: 'catalog_products',
+  entityIdExpression: 'p.id',
+  fieldName: 'default_name',
+  fallbackExpression: 'p.default_name',
+});
+
+const categoryNameExpr = localizedFieldExpression({
+  entityType: 'catalog_categories',
+  entityIdExpression: 'c.id',
+  fieldName: 'default_name',
+  fallbackExpression: 'c.default_name',
+});
+
+const projectTypeNameExpr = localizedFieldExpression({
+  entityType: 'project_types',
+  entityIdExpression: 't.id',
+  fieldName: 'default_name',
+  fallbackExpression: 't.default_name',
+});
+
+const creativeJobTypeNameExpr = localizedFieldExpression({
+  entityType: 'creative_job_types',
+  entityIdExpression: 't.id',
+  fieldName: 'default_name',
+  fallbackExpression: 't.default_name',
+});
+
+const vendorNameExpr = localizedFieldExpression({
+  entityType: 'creative_vendors',
+  entityIdExpression: 'v.id',
+  fieldName: 'name',
+  fallbackExpression: 'v.name',
+});
 
 const invoiceProfitSubquery = `
   SELECT
@@ -65,8 +109,8 @@ function toReportRow(row: RowDataPacket) {
 }
 
 export class ReportsRepository {
-  async sales(filters: ReportFilters): Promise<DetailedReportPayload> {
-    const params: SqlParams = {};
+  async sales(filters: ReportFilters, language?: UiLanguage): Promise<DetailedReportPayload> {
+    const params: SqlParams = { language: normalizeUiLanguage(language) };
     const dateFilter = buildDateFilter('i.created_at', filters, params, 'sales');
 
     const [summary, daily, topProducts, topCustomers, recentDocuments, statusBreakdown] = await Promise.all([
@@ -106,18 +150,34 @@ export class ReportsRepository {
       many<RowDataPacket>(
         `
           SELECT
-            COALESCE(p.id, 0) AS product_id,
-            COALESCE(p.sku, l.sku_snapshot, 'MANUAL') AS sku,
-            COALESCE(p.default_name, l.description_snapshot, 'Manual line') AS product_name,
-            SUM(l.quantity) AS quantity,
-            SUM(l.line_total) AS revenue,
-            SUM(l.line_total - COALESCE(l.unit_cost, 0) * l.quantity) AS estimated_profit
-          FROM sales_invoice_lines l
-          INNER JOIN sales_invoices i ON i.id = l.invoice_id
-          LEFT JOIN catalog_products p ON p.id = l.product_id
-          WHERE i.document_type = 'invoice' AND i.status = 'approved'${dateFilter}
-          GROUP BY COALESCE(p.id, 0), COALESCE(p.sku, l.sku_snapshot, 'MANUAL'), COALESCE(p.default_name, l.description_snapshot, 'Manual line')
-          ORDER BY revenue DESC, quantity DESC
+            grouped.product_id,
+            grouped.sku,
+            CASE
+              WHEN grouped.product_id = 0 THEN grouped.manual_name
+              ELSE COALESCE(${productNameExpr}, grouped.manual_name, 'Manual line')
+            END AS product_name,
+            grouped.quantity,
+            grouped.revenue,
+            grouped.estimated_profit
+          FROM (
+            SELECT
+              COALESCE(p.id, 0) AS product_id,
+              COALESCE(p.sku, l.sku_snapshot, 'MANUAL') AS sku,
+              CASE WHEN p.id IS NULL THEN COALESCE(l.description_snapshot, 'Manual line') ELSE 'Manual line' END AS manual_name,
+              SUM(l.quantity) AS quantity,
+              SUM(l.line_total) AS revenue,
+              SUM(l.line_total - COALESCE(l.unit_cost, 0) * l.quantity) AS estimated_profit
+            FROM sales_invoice_lines l
+            INNER JOIN sales_invoices i ON i.id = l.invoice_id
+            LEFT JOIN catalog_products p ON p.id = l.product_id
+            WHERE i.document_type = 'invoice' AND i.status = 'approved'${dateFilter}
+            GROUP BY
+              COALESCE(p.id, 0),
+              COALESCE(p.sku, l.sku_snapshot, 'MANUAL'),
+              CASE WHEN p.id IS NULL THEN COALESCE(l.description_snapshot, 'Manual line') ELSE 'Manual line' END
+          ) grouped
+          LEFT JOIN catalog_products p ON p.id = grouped.product_id
+          ORDER BY grouped.revenue DESC, grouped.quantity DESC
           LIMIT 8
         `,
         params,
@@ -127,13 +187,13 @@ export class ReportsRepository {
           SELECT
             c.id AS customer_id,
             c.customer_code,
-            c.name AS customer_name,
+            ANY_VALUE(${customerNameExpr}) AS customer_name,
             COUNT(*) AS documents,
             SUM(i.total) AS revenue
           FROM sales_invoices i
           INNER JOIN crm_customers c ON c.id = i.customer_id
           WHERE i.document_type = 'invoice' AND i.status = 'approved' AND i.customer_id IS NOT NULL${dateFilter}
-          GROUP BY c.id, c.customer_code, c.name
+          GROUP BY c.id, c.customer_code
           ORDER BY revenue DESC, documents DESC
           LIMIT 8
         `,
@@ -148,7 +208,7 @@ export class ReportsRepository {
             i.status,
             i.total,
             i.created_at,
-            c.name AS customer_name
+            ${customerNameExpr} AS customer_name
           FROM sales_invoices i
           LEFT JOIN crm_customers c ON c.id = i.customer_id
           WHERE 1 = 1${dateFilter}
@@ -182,8 +242,8 @@ export class ReportsRepository {
     };
   }
 
-  async inventory(filters: ReportFilters): Promise<DetailedReportPayload> {
-    const movementParams: SqlParams = {};
+  async inventory(filters: ReportFilters, language?: UiLanguage): Promise<DetailedReportPayload> {
+    const movementParams: SqlParams = { language: normalizeUiLanguage(language) };
     const movementDateFilter = buildDateFilter('m.created_at', filters, movementParams, 'inventoryMovement');
 
     const [snapshot, movementSummary, lowStock, topReserved, recentMovements, movementTypes] = await Promise.all([
@@ -218,7 +278,7 @@ export class ReportsRepository {
           SELECT
             p.id AS product_id,
             p.sku,
-            p.default_name AS product_name,
+            ${productNameExpr} AS product_name,
             b.quantity_on_hand,
             b.quantity_reserved,
             p.reorder_threshold
@@ -236,7 +296,7 @@ export class ReportsRepository {
           SELECT
             p.id AS product_id,
             p.sku,
-            p.default_name AS product_name,
+            ${productNameExpr} AS product_name,
             b.quantity_reserved,
             b.quantity_on_hand
           FROM inventory_stock_balances b
@@ -256,7 +316,7 @@ export class ReportsRepository {
             m.source_type,
             m.created_at,
             p.sku,
-            p.default_name AS product_name
+            ${productNameExpr} AS product_name
           FROM inventory_stock_movements m
           INNER JOIN catalog_products p ON p.id = m.product_id
           WHERE 1 = 1${movementDateFilter}
@@ -417,8 +477,8 @@ export class ReportsRepository {
     };
   }
 
-  async repair(filters: ReportFilters): Promise<DetailedReportPayload> {
-    const params: SqlParams = {};
+  async repair(filters: ReportFilters, language?: UiLanguage): Promise<DetailedReportPayload> {
+    const params: SqlParams = { language: normalizeUiLanguage(language) };
     const dateFilter = buildDateFilter('o.created_at', filters, params, 'repair');
 
     const [summary, statusBreakdown, recentOrders, ageingQueue] = await Promise.all([
@@ -456,7 +516,7 @@ export class ReportsRepository {
             o.status,
             o.created_at,
             o.updated_at,
-            c.name AS customer_name,
+            ${customerNameExpr} AS customer_name,
             d.device_name
           FROM repair_orders o
           INNER JOIN crm_customers c ON c.id = o.customer_id
@@ -473,7 +533,7 @@ export class ReportsRepository {
             o.id,
             o.order_code,
             o.status,
-            c.name AS customer_name,
+            ${customerNameExpr} AS customer_name,
             d.device_name,
             o.created_at,
             o.updated_at,
@@ -497,8 +557,8 @@ export class ReportsRepository {
     };
   }
 
-  async projects(filters: ReportFilters): Promise<DetailedReportPayload> {
-    const params: SqlParams = {};
+  async projects(filters: ReportFilters, language?: UiLanguage): Promise<DetailedReportPayload> {
+    const params: SqlParams = { language: normalizeUiLanguage(language) };
     const dateFilter = buildDateFilter('p.created_at', filters, params, 'projects');
 
     const [summary, statusBreakdown, recentProjects, deadlineRisk] = await Promise.all([
@@ -536,8 +596,8 @@ export class ReportsRepository {
             p.status,
             p.created_at,
             p.planned_end_at,
-            c.name AS customer_name,
-            t.default_name AS project_type
+            ${customerNameExpr} AS customer_name,
+            ${projectTypeNameExpr} AS project_type
           FROM projects p
           LEFT JOIN crm_customers c ON c.id = p.customer_id
           LEFT JOIN project_types t ON t.id = p.project_type_id
@@ -555,7 +615,7 @@ export class ReportsRepository {
             p.title,
             p.status,
             p.planned_end_at,
-            c.name AS customer_name,
+            ${customerNameExpr} AS customer_name,
             DATEDIFF(DATE(p.planned_end_at), CURRENT_DATE) AS days_to_deadline
           FROM projects p
           LEFT JOIN crm_customers c ON c.id = p.customer_id
@@ -577,8 +637,8 @@ export class ReportsRepository {
     };
   }
 
-  async creative(filters: ReportFilters): Promise<DetailedReportPayload> {
-    const params: SqlParams = {};
+  async creative(filters: ReportFilters, language?: UiLanguage): Promise<DetailedReportPayload> {
+    const params: SqlParams = { language: normalizeUiLanguage(language) };
     const dateFilter = buildDateFilter('j.created_at', filters, params, 'creative');
 
     const [summary, statusBreakdown, recentJobs, vendorQueue] = await Promise.all([
@@ -616,8 +676,8 @@ export class ReportsRepository {
             j.status,
             j.deadline_at,
             j.created_at,
-            c.name AS customer_name,
-            t.default_name AS job_type
+            ${customerNameExpr} AS customer_name,
+            ${creativeJobTypeNameExpr} AS job_type
           FROM creative_jobs j
           LEFT JOIN crm_customers c ON c.id = j.customer_id
           LEFT JOIN creative_job_types t ON t.id = j.job_type_id
@@ -631,14 +691,14 @@ export class ReportsRepository {
         `
           SELECT
             v.id AS vendor_id,
-            v.name AS vendor_name,
+            ANY_VALUE(${vendorNameExpr}) AS vendor_name,
             COUNT(*) AS tasks,
             COALESCE(SUM(vt.status IN ('pending', 'in_progress')), 0) AS active_tasks
           FROM creative_vendor_tasks vt
           INNER JOIN creative_vendors v ON v.id = vt.vendor_id
           INNER JOIN creative_jobs j ON j.id = vt.job_id
           WHERE 1 = 1${dateFilter}
-          GROUP BY v.id, v.name
+          GROUP BY v.id
           ORDER BY active_tasks DESC, tasks DESC
           LIMIT 10
         `,
@@ -654,8 +714,8 @@ export class ReportsRepository {
     };
   }
 
-  async customers(filters: ReportFilters): Promise<DetailedReportPayload> {
-    const summaryParams: SqlParams = {};
+  async customers(filters: ReportFilters, language?: UiLanguage): Promise<DetailedReportPayload> {
+    const summaryParams: SqlParams = { language: normalizeUiLanguage(language) };
     const customerDateFilter = buildDateFilter('c.created_at', filters, summaryParams, 'customerSummary');
     const salesDateFilter = buildDateFilter('i.created_at', filters, summaryParams, 'customerSales');
 
@@ -680,13 +740,13 @@ export class ReportsRepository {
           SELECT
             c.id AS customer_id,
             c.customer_code,
-            c.name AS customer_name,
+            ANY_VALUE(${customerNameExpr}) AS customer_name,
             COUNT(*) AS documents,
             SUM(i.total) AS revenue
           FROM sales_invoices i
           INNER JOIN crm_customers c ON c.id = i.customer_id
           WHERE i.document_type = 'invoice' AND i.status = 'approved' AND i.customer_id IS NOT NULL${salesDateFilter}
-          GROUP BY c.id, c.customer_code, c.name
+          GROUP BY c.id, c.customer_code
           ORDER BY revenue DESC, documents DESC
           LIMIT 10
         `,
@@ -697,7 +757,7 @@ export class ReportsRepository {
           SELECT
             c.id AS customer_id,
             c.customer_code,
-            c.name AS customer_name,
+            ${customerNameExpr} AS customer_name,
             c.customer_type,
             c.phone_primary,
             c.created_at
@@ -730,8 +790,8 @@ export class ReportsRepository {
     };
   }
 
-  async profit(filters: ReportFilters): Promise<DetailedReportPayload> {
-    const params: SqlParams = {};
+  async profit(filters: ReportFilters, language?: UiLanguage): Promise<DetailedReportPayload> {
+    const params: SqlParams = { language: normalizeUiLanguage(language) };
     const dateFilter = buildDateFilter('i.created_at', filters, params, 'profit');
 
     const [summary, byLineType, topProducts, daily] = await Promise.all([
@@ -769,18 +829,34 @@ export class ReportsRepository {
       many<RowDataPacket>(
         `
           SELECT
-            COALESCE(p.id, 0) AS product_id,
-            COALESCE(p.sku, l.sku_snapshot, 'MANUAL') AS sku,
-            COALESCE(p.default_name, l.description_snapshot, 'Manual line') AS product_name,
-            SUM(l.line_total) AS revenue,
-            SUM(COALESCE(l.unit_cost, 0) * l.quantity) AS estimated_cost,
-            SUM(l.line_total - COALESCE(l.unit_cost, 0) * l.quantity) AS estimated_profit
-          FROM sales_invoice_lines l
-          INNER JOIN sales_invoices i ON i.id = l.invoice_id
-          LEFT JOIN catalog_products p ON p.id = l.product_id
-          WHERE i.document_type = 'invoice' AND i.status = 'approved'${dateFilter}
-          GROUP BY COALESCE(p.id, 0), COALESCE(p.sku, l.sku_snapshot, 'MANUAL'), COALESCE(p.default_name, l.description_snapshot, 'Manual line')
-          ORDER BY estimated_profit DESC, revenue DESC
+            grouped.product_id,
+            grouped.sku,
+            CASE
+              WHEN grouped.product_id = 0 THEN grouped.manual_name
+              ELSE COALESCE(${productNameExpr}, grouped.manual_name, 'Manual line')
+            END AS product_name,
+            grouped.revenue,
+            grouped.estimated_cost,
+            grouped.estimated_profit
+          FROM (
+            SELECT
+              COALESCE(p.id, 0) AS product_id,
+              COALESCE(p.sku, l.sku_snapshot, 'MANUAL') AS sku,
+              CASE WHEN p.id IS NULL THEN COALESCE(l.description_snapshot, 'Manual line') ELSE 'Manual line' END AS manual_name,
+              SUM(l.line_total) AS revenue,
+              SUM(COALESCE(l.unit_cost, 0) * l.quantity) AS estimated_cost,
+              SUM(l.line_total - COALESCE(l.unit_cost, 0) * l.quantity) AS estimated_profit
+            FROM sales_invoice_lines l
+            INNER JOIN sales_invoices i ON i.id = l.invoice_id
+            LEFT JOIN catalog_products p ON p.id = l.product_id
+            WHERE i.document_type = 'invoice' AND i.status = 'approved'${dateFilter}
+            GROUP BY
+              COALESCE(p.id, 0),
+              COALESCE(p.sku, l.sku_snapshot, 'MANUAL'),
+              CASE WHEN p.id IS NULL THEN COALESCE(l.description_snapshot, 'Manual line') ELSE 'Manual line' END
+          ) grouped
+          LEFT JOIN catalog_products p ON p.id = grouped.product_id
+          ORDER BY grouped.estimated_profit DESC, grouped.revenue DESC
           LIMIT 10
         `,
         params,

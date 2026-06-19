@@ -11,7 +11,10 @@
     "migrate": "tsx src/database/migrate.ts",
     "seed": "tsx src/database/seed.ts",
     "db:setup": "npm run migrate && npm run seed",
-    "seed:demo-business": "tsx scripts/import-demo-business-data.ts"
+    "seed:demo-business": "tsx scripts/import-demo-business-data.ts",
+    "seed:russian-demo-reset": "tsx scripts/reset-russian-demo-data.ts",
+    "translations:rebuild": "tsx scripts/rebuild-data-with-translations.ts",
+    "translations:refresh": "tsx scripts/refresh-entity-translations.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

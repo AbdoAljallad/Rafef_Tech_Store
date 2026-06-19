@@ -1,8 +1,12 @@
 import { env } from '../../config/env.js';
 import { pool } from '../../database/mysql.js';
+import { AppError } from '../../shared/errors/AppError.js';
 import { IntegrationsRepository } from './integrations.repository.js';
 import { WebhookOutboxWorker } from './webhookOutbox.worker.js';
 async function checkOpenClaw() {
+    if (!env.OPENCLAW_ENABLED) {
+        return { key: 'openclaw', status: 'disabled', gatewayConfigured: false };
+    }
     if (!env.OPENCLAW_GATEWAY_URL) {
         return { key: 'openclaw', status: 'not_configured', gatewayConfigured: false };
     }
@@ -21,6 +25,9 @@ async function checkOpenClaw() {
     }
 }
 async function checkN8n() {
+    if (!env.N8N_ENABLED) {
+        return { key: 'n8n', status: 'disabled', webhookConfigured: false, healthConfigured: false };
+    }
     if (!env.N8N_WEBHOOK_URL && !env.N8N_HEALTH_URL) {
         return { key: 'n8n', status: 'not_configured', webhookConfigured: false, healthConfigured: false };
     }
@@ -70,6 +77,9 @@ export class IntegrationsService {
         return this.repo.listOutbox();
     }
     async enqueueN8nTest(actorUserId) {
+        if (!env.N8N_ENABLED) {
+            throw new AppError(503, 'INTEGRATION_DISABLED', 'n8n integration is disabled');
+        }
         const id = await this.repo.createOutbox({
             target: 'n8n',
             webhookUrl: env.N8N_WEBHOOK_URL || null,

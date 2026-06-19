@@ -35,6 +35,8 @@ export type Customer = {
   id: number;
   customer_code: string;
   name: string;
+  name_original?: string;
+  name_source_lang?: string | null;
   phone_primary: string | null;
   phone_secondary: string | null;
   email: string | null;

@@ -6,7 +6,8 @@ const optionalImage = z
   .trim()
   .optional()
   .nullable()
-  .refine((value) => !value || value.startsWith('data:image/'), 'Invalid image payload');
+  .refine((value) => !value || value.startsWith('data:image/'), 'Invalid image payload')
+  .refine((value) => !value || value.length <= 350_000, 'Image is too large');
 
 export const contactCreateSchema = z.object({
   contactType: z.enum(['phone', 'email', 'whatsapp', 'telegram', 'other']),

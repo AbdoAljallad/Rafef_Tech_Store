@@ -11,8 +11,8 @@ export class SalesService {
         this.inventoryRepo = inventoryRepo;
         this.auditService = auditService;
     }
-    async createInvoice(input, actorUserId, ip) {
-        const prepared = await this.prepareInvoice(input);
+    async createInvoice(input, actorUserId, ip, language) {
+        const prepared = await this.prepareInvoice(input, language);
         const invoice = await this.salesRepo.createInvoice({
             customerId: prepared.customerId,
             repairOrderId: prepared.repairOrderId,
@@ -41,19 +41,19 @@ export class SalesService {
             newValues: createdInvoice,
             ipAddress: ip,
         });
-        return createdInvoice;
+        return this.salesRepo.getInvoiceById(invoice.id, language);
     }
     async listInvoices(params = {}) {
         return this.salesRepo.listInvoices(params);
     }
-    async getInvoice(id) {
-        return this.salesRepo.getInvoiceById(id);
+    async getInvoice(id, language) {
+        return this.salesRepo.getInvoiceById(id, language);
     }
-    async updateInvoicePrintContent(id, input, actorUserId, ip) {
-        const before = await this.salesRepo.getInvoiceById(id);
+    async updateInvoicePrintContent(id, input, actorUserId, ip, language) {
+        const before = await this.salesRepo.getInvoiceById(id, language);
         if (!before)
             throw new AppError(404, 'NOT_FOUND', 'Invoice not found');
-        const updated = await this.salesRepo.updateInvoicePrintContent(id, input);
+        const updated = await this.salesRepo.updateInvoicePrintContent(id, input, language);
         await this.auditService.log({
             actorUserId,
             actionCode: 'sales.invoice.print_content_updated',
@@ -66,15 +66,15 @@ export class SalesService {
         });
         return updated;
     }
-    async approveInvoice(id, actorUserId, payload, ip) {
+    async approveInvoice(id, actorUserId, payload, ip, language) {
         const updated = await this.salesRepo.approveInvoice(id, actorUserId, payload);
         await this.auditService.log({ actorUserId, actionCode: 'sales.invoice.approved', module: 'sales', entityType: 'sales_invoices', entityId: id, newValues: updated, ipAddress: ip });
-        return updated;
+        return this.salesRepo.getInvoiceById(id, language);
     }
-    async voidInvoice(id, actorUserId, ip) {
+    async voidInvoice(id, actorUserId, ip, language) {
         return this.salesRepo.markVoided(id, actorUserId).then(async (updated) => {
             await this.auditService.log({ actorUserId, actionCode: 'sales.invoice.voided', module: 'sales', entityType: 'sales_invoices', entityId: id, newValues: updated, ipAddress: ip });
-            return updated;
+            return this.salesRepo.getInvoiceById(id, language);
         });
     }
     async createReturn(input, actorUserId, ip) {
@@ -98,7 +98,7 @@ export class SalesService {
         await this.auditService.log({ actorUserId, actionCode: 'sales.return.created', module: 'sales', entityType: 'sales_returns', entityId: ret.id, newValues: ret, ipAddress: ip });
         return this.salesRepo.getReturnById(ret.id);
     }
-    async prepareInvoice(input) {
+    async prepareInvoice(input, language) {
         let repairOrderId = input.repairOrderId ?? null;
         let projectId = input.projectId ?? null;
         let customerId = input.customerId ?? null;
@@ -107,25 +107,25 @@ export class SalesService {
         for (const line of input.lines) {
             switch (line.lineType ?? 'product') {
                 case 'product':
-                    preparedLines.push(await this.prepareProductLine(line));
+                    preparedLines.push(await this.prepareProductLine(line, language));
                     break;
                 case 'manual':
                     preparedLines.push(this.prepareManualLine(line));
                     break;
                 case 'repair_service': {
-                    const preparedLine = await this.prepareRepairServiceLine(line);
+                    const preparedLine = await this.prepareRepairServiceLine(line, language);
                     preparedLines.push(preparedLine.line);
                     repairOrderId = this.mergeRepairOrderId(repairOrderId, preparedLine.repairOrderId);
                     break;
                 }
                 case 'repair_part': {
-                    const preparedLine = await this.prepareRepairPartLine(line);
+                    const preparedLine = await this.prepareRepairPartLine(line, language);
                     preparedLines.push(preparedLine.line);
                     repairOrderId = this.mergeRepairOrderId(repairOrderId, preparedLine.repairOrderId);
                     break;
                 }
                 case 'project_material': {
-                    const preparedLine = await this.prepareProjectMaterialLine(line);
+                    const preparedLine = await this.prepareProjectMaterialLine(line, language);
                     preparedLines.push(preparedLine.line);
                     projectId = this.mergeProjectId(projectId, preparedLine.projectId);
                     break;
@@ -136,7 +136,7 @@ export class SalesService {
             throw new AppError(409, 'STATE_CONFLICT', 'Repair and project billing cannot be mixed in one document');
         }
         if (repairOrderId) {
-            const order = await this.salesRepo.getRepairOrderHeader(repairOrderId);
+            const order = await this.salesRepo.getRepairOrderHeader(repairOrderId, language);
             if (!order) {
                 throw new AppError(404, 'NOT_FOUND', 'Repair order not found');
             }
@@ -150,7 +150,7 @@ export class SalesService {
             isWalkIn = false;
         }
         if (projectId) {
-            const project = await this.salesRepo.getProjectHeader(projectId);
+            const project = await this.salesRepo.getProjectHeader(projectId, language);
             if (!project) {
                 throw new AppError(404, 'NOT_FOUND', 'Project not found');
             }
@@ -173,8 +173,8 @@ export class SalesService {
             lines: preparedLines,
         };
     }
-    async prepareProductLine(line) {
-        const product = await this.salesRepo.findProductPricing(line.productId);
+    async prepareProductLine(line, language) {
+        const product = await this.salesRepo.findProductPricing(line.productId, language);
         if (!product) {
             throw new AppError(404, 'NOT_FOUND', `Product ${line.productId} not found`);
         }
@@ -191,7 +191,7 @@ export class SalesService {
             sourceId: line.productId,
         };
     }
-    async prepareRepairServiceLine(line) {
+    async prepareRepairServiceLine(line, language) {
         const service = await this.salesRepo.findRepairServiceBillable(line.repairOrderServiceId);
         if (!service) {
             throw new AppError(404, 'NOT_FOUND', 'Repair service not found');
@@ -218,8 +218,8 @@ export class SalesService {
             },
         };
     }
-    async prepareRepairPartLine(line) {
-        const part = await this.salesRepo.findRepairPartBillable(line.repairOrderPartId);
+    async prepareRepairPartLine(line, language) {
+        const part = await this.salesRepo.findRepairPartBillable(line.repairOrderPartId, language);
         if (!part) {
             throw new AppError(404, 'NOT_FOUND', 'Repair part not found');
         }
@@ -251,8 +251,8 @@ export class SalesService {
             },
         };
     }
-    async prepareProjectMaterialLine(line) {
-        const material = await this.salesRepo.findProjectMaterialBillable(line.projectMaterialId);
+    async prepareProjectMaterialLine(line, language) {
+        const material = await this.salesRepo.findProjectMaterialBillable(line.projectMaterialId, language);
         if (!material) {
             throw new AppError(404, 'NOT_FOUND', 'Project material not found');
         }

@@ -49,7 +49,7 @@ export function CustomerForm({ customer, onSubmit, onCancel, isSubmitting }: Cus
   const form = useForm<CustomerFormValues>({
     resolver: zodResolver(customerFormSchema) as unknown as Resolver<CustomerFormValues>,
     defaultValues: {
-      name: customer?.name ?? '',
+      name: customer?.name_original ?? customer?.name ?? '',
       avatarUrl: customer?.avatar_url ?? null,
       customerType: customer?.customer_type ?? 'person',
       notes: customer?.notes ?? '',
@@ -76,12 +76,7 @@ export function CustomerForm({ customer, onSubmit, onCancel, isSubmitting }: Cus
       return;
     }
 
-    const imageData = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result ?? ''));
-      reader.onerror = () => reject(new Error(t('customers.form.fileReadError', { ns: 'app' })));
-      reader.readAsDataURL(file);
-    });
+    const imageData = await resizeImageForAvatar(file, t('customers.form.fileReadError', { ns: 'app' }));
 
     form.setValue('avatarUrl', imageData, { shouldDirty: true, shouldValidate: true });
   }
@@ -311,4 +306,35 @@ export function CustomerForm({ customer, onSubmit, onCancel, isSubmitting }: Cus
       </div>
     </form>
   );
+}
+
+async function resizeImageForAvatar(file: File, errorMessage: string) {
+  const objectUrl = URL.createObjectURL(file);
+
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error(errorMessage));
+      element.src = objectUrl;
+    });
+
+    const maxSide = 512;
+    const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext('2d');
+    if (!context) {
+      throw new Error(errorMessage);
+    }
+
+    context.drawImage(image, 0, 0, width, height);
+    return canvas.toDataURL('image/jpeg', 0.82);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
 }

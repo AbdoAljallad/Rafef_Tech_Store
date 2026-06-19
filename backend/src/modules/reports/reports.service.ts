@@ -4,6 +4,7 @@ import {
   type DetailedReportPayload,
   type ReportFilters,
 } from './reports.repository.js';
+import type { UiLanguage } from '../../shared/localization/language.js';
 
 export const REPORT_SECTION_PERMISSIONS: Record<DashboardSectionKey, string> = {
   sales: 'reports.sales.view',
@@ -21,21 +22,21 @@ export const REPORT_SECTION_ORDER = Object.keys(REPORT_SECTION_PERMISSIONS) as D
 export class ReportsService {
   constructor(private readonly repo = new ReportsRepository()) {}
 
-  sales(filters: ReportFilters) { return this.repo.sales(filters); }
-  inventory(filters: ReportFilters) { return this.repo.inventory(filters); }
+  sales(filters: ReportFilters, language?: UiLanguage) { return this.repo.sales(filters, language); }
+  inventory(filters: ReportFilters, language?: UiLanguage) { return this.repo.inventory(filters, language); }
   finance(filters: ReportFilters) { return this.repo.finance(filters); }
-  repair(filters: ReportFilters) { return this.repo.repair(filters); }
-  projects(filters: ReportFilters) { return this.repo.projects(filters); }
-  creative(filters: ReportFilters) { return this.repo.creative(filters); }
-  customers(filters: ReportFilters) { return this.repo.customers(filters); }
-  profit(filters: ReportFilters) { return this.repo.profit(filters); }
+  repair(filters: ReportFilters, language?: UiLanguage) { return this.repo.repair(filters, language); }
+  projects(filters: ReportFilters, language?: UiLanguage) { return this.repo.projects(filters, language); }
+  creative(filters: ReportFilters, language?: UiLanguage) { return this.repo.creative(filters, language); }
+  customers(filters: ReportFilters, language?: UiLanguage) { return this.repo.customers(filters, language); }
+  profit(filters: ReportFilters, language?: UiLanguage) { return this.repo.profit(filters, language); }
 
-  async dashboard(permissions: string[], filters: ReportFilters) {
+  async dashboard(permissions: string[], filters: ReportFilters, language?: UiLanguage) {
     const availableSections = REPORT_SECTION_ORDER.filter((key) => permissions.includes(REPORT_SECTION_PERMISSIONS[key]));
 
     const sectionEntries = await Promise.all(
       availableSections.map(async (key) => {
-        const payload = await this.section(key, filters);
+        const payload = await this.section(key, filters, language);
         return [key, payload] as const;
       }),
     );
@@ -48,27 +49,26 @@ export class ReportsService {
     };
   }
 
-  private section(key: DashboardSectionKey, filters: ReportFilters) {
+  private section(key: DashboardSectionKey, filters: ReportFilters, language?: UiLanguage) {
     switch (key) {
       case 'sales':
-        return this.sales(filters);
+        return this.sales(filters, language);
       case 'inventory':
-        return this.inventory(filters);
+        return this.inventory(filters, language);
       case 'finance':
         return this.finance(filters);
       case 'repair':
-        return this.repair(filters);
+        return this.repair(filters, language);
       case 'projects':
-        return this.projects(filters);
+        return this.projects(filters, language);
       case 'creative':
-        return this.creative(filters);
+        return this.creative(filters, language);
       case 'customers':
-        return this.customers(filters);
+        return this.customers(filters, language);
       case 'profit':
-        return this.profit(filters);
+        return this.profit(filters, language);
       default:
         return Promise.resolve({ report: {} });
     }
   }
 }
-

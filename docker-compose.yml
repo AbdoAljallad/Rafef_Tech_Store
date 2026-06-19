@@ -30,6 +30,26 @@ services:
     ports:
       - "8080:8080"
 
+  localtranslate:
+    build:
+      context: .
+      dockerfile: backend/translation-local/Dockerfile
+    container_name: rafef-tech-localtranslate
+    restart: unless-stopped
+    ports:
+      - "5002:5000"
+    environment:
+      PORT: 5000
+      ARGOS_PACKAGE_PAIRS: en_ar,ar_en,en_ru,ru_en
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health').read()"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    volumes:
+      - localtranslate_data:/root/.local/share/argos-translate
+
   backend:
     image: node:20-alpine
     container_name: rafef-tech-backend
@@ -54,9 +74,16 @@ services:
       SEED_ADMIN_USERNAME: admin
       SEED_ADMIN_PASSWORD: admin123
       SEED_AI_ASSISTANT_PASSWORD: change-this-ai-assistant-password
+      N8N_ENABLED: "false"
       N8N_WEBHOOK_URL: http://host.docker.internal:5678/webhook/rafef-tech
       N8N_HEALTH_URL: http://host.docker.internal:5678/healthz
       N8N_SHARED_SECRET: change-this-n8n-secret
+      TRANSLATION_PROVIDER: ${TRANSLATION_PROVIDER:-localtranslate}
+      LOCAL_TRANSLATE_URL: ${LOCAL_TRANSLATE_URL:-http://host.docker.internal:5002}
+      MICROSOFT_TRANSLATOR_ENDPOINT: ${MICROSOFT_TRANSLATOR_ENDPOINT:-https://api.cognitive.microsofttranslator.com}
+      MICROSOFT_TRANSLATOR_KEY: ${MICROSOFT_TRANSLATOR_KEY:-}
+      MICROSOFT_TRANSLATOR_REGION: ${MICROSOFT_TRANSLATOR_REGION:-}
+      OPENCLAW_ENABLED: "false"
       OPENCLAW_GATEWAY_URL: http://host.docker.internal:18790
     extra_hosts:
       - "host.docker.internal:172.20.0.1"
@@ -101,3 +128,4 @@ volumes:
   rafef_mysql_data:
   caddy_data:
   caddy_config:
+  localtranslate_data:

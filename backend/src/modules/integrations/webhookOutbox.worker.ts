@@ -6,6 +6,15 @@ export class WebhookOutboxWorker {
   constructor(private readonly repo = new IntegrationsRepository()) {}
 
   async status() {
+    if (!env.N8N_ENABLED) {
+      return {
+        name: 'webhook_outbox_worker',
+        status: 'disabled',
+        mode: 'manual',
+        stats: await this.repo.outboxStats(),
+      };
+    }
+
     return {
       name: 'webhook_outbox_worker',
       status: env.N8N_WEBHOOK_URL ? 'ready' : 'not_configured',
@@ -15,7 +24,7 @@ export class WebhookOutboxWorker {
   }
 
   async processPending(limit = 10) {
-    if (!env.N8N_WEBHOOK_URL) {
+    if (!env.N8N_ENABLED || !env.N8N_WEBHOOK_URL) {
       return { processed: 0, sent: 0, failed: 0, skipped: true };
     }
 

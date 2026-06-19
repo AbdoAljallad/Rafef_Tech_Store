@@ -1,11 +1,40 @@
 import { pool } from '../../database/mysql.js';
 import { AppError } from '../../shared/errors/AppError.js';
+import { normalizeUiLanguage } from '../../shared/localization/language.js';
+import { localizedFieldExpression } from '../../shared/localization/sql.js';
+const projectTypeNameExpr = localizedFieldExpression({
+    entityType: 'project_types',
+    entityIdExpression: 'pt.id',
+    fieldName: 'default_name',
+    fallbackExpression: 'pt.default_name',
+});
+const customerNameExpr = localizedFieldExpression({
+    entityType: 'crm_customers',
+    entityIdExpression: 'c.id',
+    fieldName: 'name',
+    fallbackExpression: 'c.name',
+});
+const productNameExpr = localizedFieldExpression({
+    entityType: 'catalog_products',
+    entityIdExpression: 'p.id',
+    fieldName: 'default_name',
+    fallbackExpression: 'p.default_name',
+});
+const categoryNameExpr = localizedFieldExpression({
+    entityType: 'catalog_categories',
+    entityIdExpression: 'c.id',
+    fieldName: 'default_name',
+    fallbackExpression: 'c.default_name',
+});
 function nullable(value) {
     return value === undefined ? null : value;
 }
 export class ProjectsRepository {
-    async listTypes() {
-        const [rows] = await pool.execute('SELECT * FROM project_types WHERE is_active = TRUE ORDER BY default_name');
+    async listTypes(language) {
+        const [rows] = await pool.query(`SELECT pt.*, ${projectTypeNameExpr} AS default_name
+       FROM project_types pt
+       WHERE pt.is_active = TRUE
+       ORDER BY default_name`, { language: normalizeUiLanguage(language) });
         return rows;
     }
     async createType(input, userId) {
@@ -13,15 +42,18 @@ export class ProjectsRepository {
         return { id: result.insertId, code: input.code, default_name: input.defaultName, description: input.description ?? null };
     }
     async listProjects(params) {
-        const [rows] = await pool.execute(`SELECT p.*, pt.default_name AS project_type_name, c.name AS customer_name
+        const [rows] = await pool.query(`SELECT
+         p.*,
+         ${projectTypeNameExpr} AS project_type_name,
+         ${customerNameExpr} AS customer_name
        FROM projects p
        LEFT JOIN project_types pt ON pt.id = p.project_type_id
        LEFT JOIN crm_customers c ON c.id = p.customer_id
        ORDER BY p.created_at DESC, p.id DESC
-       LIMIT ${params.limit} OFFSET ${params.offset}`);
+       LIMIT ${params.limit} OFFSET ${params.offset}`, { language: normalizeUiLanguage(params.language) });
         return rows;
     }
-    async createProject(input, userId) {
+    async createProject(input, userId, language) {
         if (input.projectTypeId)
             await this.requireType(input.projectTypeId);
         if (input.customerId)
@@ -44,47 +76,48 @@ export class ProjectsRepository {
             userId,
         ]);
         await this.insertStatusHistory(result.insertId, null, 'draft', 'created', 'Project created', userId);
-        return this.findProject(result.insertId);
+        return this.findProject(result.insertId, language);
     }
-    async findProject(id) {
-        const [projects] = await pool.execute(`SELECT
+    async findProject(id, language) {
+        const [projects] = await pool.query(`SELECT
          p.*,
-         pt.default_name AS project_type_name,
+         ${projectTypeNameExpr} AS project_type_name,
          c.customer_code,
-         c.name AS customer_name
+         ${customerNameExpr} AS customer_name
        FROM projects p
        LEFT JOIN project_types pt ON pt.id = p.project_type_id
        LEFT JOIN crm_customers c ON c.id = p.customer_id
-       WHERE p.id = ?
-       LIMIT 1`, [id]);
+       WHERE p.id = :projectId
+       LIMIT 1`, { language: normalizeUiLanguage(language), projectId: id });
         const project = projects[0];
         if (!project)
             return null;
         const [sites] = await pool.execute('SELECT * FROM project_sites WHERE project_id = ? ORDER BY id', [id]);
-        const [materials] = await pool.execute(`SELECT
+        const [materials] = await pool.query(`SELECT
          m.*,
          p.sku AS product_sku,
+         ${productNameExpr} AS product_name,
          p.current_sale_price,
          r.status AS reservation_status
        FROM project_materials m
        INNER JOIN catalog_products p ON p.id = m.product_id
        LEFT JOIN inventory_stock_reservations r ON r.id = m.reservation_id
-       WHERE m.project_id = ?
-       ORDER BY m.id`, [id]);
+       WHERE m.project_id = :projectId
+       ORDER BY m.id`, { language: normalizeUiLanguage(language), projectId: id });
         const [assets] = await pool.execute('SELECT * FROM project_installed_assets WHERE project_id = ? ORDER BY id', [id]);
         const [notes] = await pool.execute('SELECT * FROM project_notes WHERE project_id = ? ORDER BY id', [id]);
         const [history] = await pool.execute('SELECT * FROM project_status_history WHERE project_id = ? ORDER BY id', [id]);
         return { ...project, sites, materials, installedAssets: assets, notes, history };
     }
-    async getProjectBilling(projectId) {
-        const project = await this.getProjectHeader(projectId);
+    async getProjectBilling(projectId, language) {
+        const project = await this.getProjectHeader(projectId, language);
         if (!project) {
             throw new AppError(404, 'NOT_FOUND', 'Project not found');
         }
         if (project.status === 'cancelled') {
             return { project, materials: [] };
         }
-        const [materials] = await pool.execute(`SELECT
+        const [materials] = await pool.query(`SELECT
          m.id AS project_material_id,
          m.project_id,
          m.product_id,
@@ -95,15 +128,15 @@ export class ProjectsRepository {
          m.sales_invoice_id,
          p.sku AS product_sku,
          p.current_sale_price,
-         c.default_name AS category_name,
+         ${categoryNameExpr} AS category_name,
          r.status AS reservation_status,
          CAST(m.quantity * COALESCE(p.current_sale_price, 0) AS DECIMAL(19,4)) AS line_total
        FROM project_materials m
        INNER JOIN catalog_products p ON p.id = m.product_id
        INNER JOIN catalog_categories c ON c.id = p.category_id
        LEFT JOIN inventory_stock_reservations r ON r.id = m.reservation_id
-       WHERE m.project_id = ? AND m.sales_invoice_id IS NULL
-       ORDER BY m.id`, [projectId]);
+       WHERE m.project_id = :projectId AND m.sales_invoice_id IS NULL
+       ORDER BY m.id`, { language: normalizeUiLanguage(language), projectId });
         return { project, materials };
     }
     async addSite(projectId, input, userId) {
@@ -122,15 +155,15 @@ export class ProjectsRepository {
         ]);
         return { id: result.insertId, projectId, ...input };
     }
-    async changeStatus(projectId, input, userId) {
+    async changeStatus(projectId, input, userId, language) {
         const project = await this.requireProject(projectId);
         await pool.execute('UPDATE projects SET status = ? WHERE id = ?', [input.status, projectId]);
         await this.insertStatusHistory(projectId, String(project.status), input.status, input.stageCode ?? null, input.notes ?? null, userId);
-        return this.findProject(projectId);
+        return this.findProject(projectId, language);
     }
-    async addMaterial(projectId, input, reservationId, userId) {
+    async addMaterial(projectId, input, reservationId, userId, language) {
         await this.requireProject(projectId);
-        const product = await this.requireProduct(input.productId);
+        const product = await this.requireProduct(input.productId, language);
         const [result] = await pool.execute(`INSERT INTO project_materials (
          project_id, product_id, product_name_snapshot, quantity, unit_cost_snapshot, reservation_id, notes, created_by_user_id
        )
@@ -176,16 +209,21 @@ export class ProjectsRepository {
         const [result] = await pool.execute('INSERT INTO project_notes (project_id, note_text, created_by_user_id) VALUES (?, ?, ?)', [projectId, input.noteText, userId]);
         return { id: result.insertId, projectId, noteText: input.noteText };
     }
-    async summary(projectId) {
-        const project = await this.findProject(projectId);
+    async summary(projectId, language) {
+        const resolvedLanguage = normalizeUiLanguage(language);
+        const project = await this.findProject(projectId, resolvedLanguage);
         if (!project)
             throw new AppError(404, 'NOT_FOUND', 'Project not found');
         const projectRow = project;
         const [customers] = projectRow.customer_id
-            ? await pool.execute('SELECT * FROM crm_customers WHERE id = ?', [Number(projectRow.customer_id)])
+            ? await pool.query(`SELECT c.*, ${customerNameExpr} AS name
+           FROM crm_customers c
+           WHERE c.id = :customerId`, { language: resolvedLanguage, customerId: Number(projectRow.customer_id) })
             : [[]];
         const [types] = projectRow.project_type_id
-            ? await pool.execute('SELECT * FROM project_types WHERE id = ?', [Number(projectRow.project_type_id)])
+            ? await pool.query(`SELECT pt.*, ${projectTypeNameExpr} AS default_name
+           FROM project_types pt
+           WHERE pt.id = :typeId`, { language: resolvedLanguage, typeId: Number(projectRow.project_type_id) })
             : [[]];
         return { project, customer: customers[0] ?? null, projectType: types[0] ?? null };
     }
@@ -196,26 +234,30 @@ export class ProjectsRepository {
             throw new AppError(404, 'NOT_FOUND', 'Project not found');
         return project;
     }
-    async requireProduct(id) {
-        const [rows] = await pool.execute('SELECT * FROM catalog_products WHERE id = ? AND is_active = TRUE', [id]);
+    async requireProduct(id, language) {
+        const [rows] = await pool.query(`SELECT
+         p.*,
+         ${productNameExpr} AS default_name
+       FROM catalog_products p
+       WHERE p.id = :productId AND p.is_active = TRUE`, { language: normalizeUiLanguage(language), productId: id });
         const product = rows[0];
         if (!product)
             throw new AppError(404, 'NOT_FOUND', 'Product not found');
         return product;
     }
-    async getProjectHeader(id) {
-        const [rows] = await pool.execute(`SELECT
+    async getProjectHeader(id, language) {
+        const [rows] = await pool.query(`SELECT
          p.id,
          p.project_code,
          p.customer_id,
          c.customer_code,
-         c.name AS customer_name,
+         ${customerNameExpr} AS customer_name,
          p.title,
          p.status
        FROM projects p
        LEFT JOIN crm_customers c ON c.id = p.customer_id
-       WHERE p.id = ?
-       LIMIT 1`, [id]);
+       WHERE p.id = :projectId
+       LIMIT 1`, { language: normalizeUiLanguage(language), projectId: id });
         return rows[0] ?? null;
     }
     async requireType(id) {

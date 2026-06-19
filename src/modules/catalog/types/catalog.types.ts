@@ -6,11 +6,15 @@ export type Product = {
   unit_id: number;
   sku: string;
   default_name: string;
+  default_name_original?: string;
+  default_name_source_lang?: string | null;
   tracking_type: 'quantity' | 'serial' | 'batch';
   current_purchase_price: string;
   current_sale_price: string;
   reorder_threshold: string;
   category_name: string;
+  category_name_original?: string;
+  category_name_source_lang?: string | null;
   category_code?: string;
   show_in_sales?: number;
   show_in_repair?: number;
@@ -22,10 +26,22 @@ export type Product = {
   quantity_reserved?: string;
   quantity_available?: string;
 };
-export type Service = { id: number; code: string; default_name: string; module: string; default_price: string; category_name: string };
+export type Service = {
+  id: number;
+  code: string;
+  default_name: string;
+  default_name_original?: string;
+  default_name_source_lang?: string | null;
+  module: string;
+  default_price: string;
+  category_name: string;
+  category_name_original?: string;
+};
 export type Supplier = {
   id: number;
   name: string;
+  name_original?: string;
+  name_source_lang?: string | null;
   phone?: string | null;
   email?: string | null;
   address_text?: string | null;

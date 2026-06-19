@@ -9,6 +9,7 @@ type AuthState = {
   permissions: Set<string>;
   isLoading: boolean;
   errorCode: string | null;
+  markUnauthenticated: (errorCode?: string | null) => void;
   restoreSession: () => Promise<void>;
   login: (payload: LoginRequest) => Promise<void>;
   logout: () => Promise<void>;
@@ -26,6 +27,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isLoading: false,
   errorCode: null,
 
+  markUnauthenticated(errorCode = 'AUTH_REQUIRED') {
+    setAccessToken(null);
+    set({
+      status: 'unauthenticated',
+      user: null,
+      permissions: new Set<string>(),
+      isLoading: false,
+      errorCode,
+    });
+  },
+
   async restoreSession() {
     if (get().status !== 'unknown') {
       return;
@@ -42,13 +54,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isLoading: false,
       });
     } catch {
-      setAccessToken(null);
-      set({
-        status: 'unauthenticated',
-        user: null,
-        permissions: new Set<string>(),
-        isLoading: false,
-      });
+      get().markUnauthenticated();
     }
   },
 

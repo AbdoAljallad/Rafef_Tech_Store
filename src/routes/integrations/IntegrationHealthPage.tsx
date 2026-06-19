@@ -8,6 +8,22 @@ function formatIntegrationStatus(status: string, t: (key: string, options?: Reco
   return t(`integrations.statuses.${status}`, { ns: 'app', defaultValue: status });
 }
 
+function resolveStatusTone(status: string) {
+  if (status === 'ok' || status === 'configured' || status === 'sent') {
+    return 'success' as const;
+  }
+
+  if (status === 'disabled' || status === 'not_configured' || status === 'skipped') {
+    return 'neutral' as const;
+  }
+
+  if (status === 'failed' || status === 'error') {
+    return 'danger' as const;
+  }
+
+  return 'warning' as const;
+}
+
 export function IntegrationHealthPage() {
   const { t } = useTranslation('app');
   const healthQuery = useQuery({ queryKey: ['integrationsHealth'], queryFn: integrationsApi.health });
@@ -36,7 +52,7 @@ export function IntegrationHealthPage() {
                 key: 'status',
                 header: t('integrations.status'),
                 render: (row) => (
-                  <Badge tone={row.status === 'ok' || row.status === 'configured' ? 'success' : 'warning'}>
+                  <Badge tone={resolveStatusTone(row.status)}>
                     {formatIntegrationStatus(row.status, t)}
                   </Badge>
                 ),

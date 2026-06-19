@@ -28,82 +28,6 @@ const tableActionButtonStyle: CSSProperties = {
   padding: '0.55rem 0.9rem',
 };
 
-const textCollators = {
-  ar: new Intl.Collator('ar', { sensitivity: 'base', numeric: true, ignorePunctuation: true }),
-  en: new Intl.Collator('en', { sensitivity: 'base', numeric: true, ignorePunctuation: true }),
-  ru: new Intl.Collator('ru', { sensitivity: 'base', numeric: true, ignorePunctuation: true }),
-  generic: new Intl.Collator(undefined, { sensitivity: 'base', numeric: true, ignorePunctuation: true }),
-};
-
-function normalizeSortValue(value: string) {
-  return value
-    .normalize('NFKC')
-    .replace(/\p{Cf}/gu, '')
-    .replace(/^[^\p{Letter}\p{Number}]+/gu, '')
-    .replace(/[\u0622\u0623\u0625\u0671]/g, '\u0627')
-    .replace(/\u0649/g, '\u064A')
-    .trim();
-}
-
-function getScriptPriority(value: string) {
-  const normalized = normalizeSortValue(value);
-
-  for (const char of normalized) {
-    if (/\p{Script=Arabic}/u.test(char)) return 0;
-    if (/\p{Script=Latin}/u.test(char)) return 1;
-    if (/\p{Script=Cyrillic}/u.test(char)) return 2;
-    if (/\p{Number}/u.test(char)) return 3;
-    if (/\p{Letter}/u.test(char)) return 4;
-  }
-
-  return 5;
-}
-
-function compareTextByLanguagePriority(leftValue: string, rightValue: string, direction: 'asc' | 'desc' = 'asc') {
-  const left = normalizeSortValue(leftValue);
-  const right = normalizeSortValue(rightValue);
-  const leftPriority = getScriptPriority(left);
-  const rightPriority = getScriptPriority(right);
-
-  let result = 0;
-
-  if (leftPriority !== rightPriority) {
-    result = leftPriority - rightPriority;
-  } else {
-    const collator =
-      leftPriority === 0 ? textCollators.ar :
-      leftPriority === 1 ? textCollators.en :
-      leftPriority === 2 ? textCollators.ru :
-      textCollators.generic;
-
-    result = collator.compare(left, right);
-
-    if (result === 0) {
-      result = textCollators.generic.compare(left, right);
-    }
-  }
-
-  return direction === 'asc' ? result : -result;
-}
-
-function compareCustomers(left: Customer, right: Customer, sortMode: SortMode) {
-  switch (sortMode) {
-    case 'name-asc':
-      return compareTextByLanguagePriority(left.name, right.name, 'asc');
-    case 'name-desc':
-      return compareTextByLanguagePriority(left.name, right.name, 'desc');
-    case 'code-asc':
-      return textCollators.generic.compare(left.customer_code, right.customer_code);
-    case 'code-desc':
-      return textCollators.generic.compare(right.customer_code, left.customer_code);
-    case 'created-asc':
-      return new Date(left.created_at).getTime() - new Date(right.created_at).getTime();
-    case 'created-desc':
-    default:
-      return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
-  }
-}
-
 function clampPageSize(value: number) {
   return Math.min(Math.max(value, 1), 1000);
 }
@@ -170,14 +94,13 @@ export function CustomersPage() {
   }
 
   const customers = customersQuery.data?.items ?? [];
-  const sortedCustomers = useMemo(() => [...customers].sort((left, right) => compareCustomers(left, right, sortMode)), [customers, sortMode]);
   const meta = customersQuery.data?.meta;
   const hasMeta = Boolean(meta && typeof meta.total === 'number' && typeof meta.totalPages === 'number');
-  const total = hasMeta ? meta!.total : (page - 1) * pageSize + sortedCustomers.length;
-  const totalPages = hasMeta ? meta!.totalPages : (sortedCustomers.length === pageSize ? page + 1 : page);
-  const hasNextPage = hasMeta ? page < totalPages : sortedCustomers.length === pageSize;
+  const total = hasMeta ? meta!.total : (page - 1) * pageSize + customers.length;
+  const totalPages = hasMeta ? meta!.totalPages : (customers.length === pageSize ? page + 1 : page);
+  const hasNextPage = hasMeta ? page < totalPages : customers.length === pageSize;
   const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
-  const rangeEnd = total === 0 ? 0 : (page - 1) * pageSize + sortedCustomers.length;
+  const rangeEnd = total === 0 ? 0 : (page - 1) * pageSize + customers.length;
   const hasSearch = search.trim().length > 0;
 
   const tableColumns = useMemo<DataTableColumn<Customer>[]>(
@@ -457,7 +380,7 @@ export function CustomersPage() {
           </div>
         ) : null}
 
-        {!customersQuery.isLoading && !customersQuery.isError && sortedCustomers.length === 0 ? (
+        {!customersQuery.isLoading && !customersQuery.isError && customers.length === 0 ? (
           <div className="customers-empty-state">
             <span className="customers-empty-icon" aria-hidden="true">
               <UsersRound size={34} />
@@ -475,11 +398,11 @@ export function CustomersPage() {
           </div>
         ) : null}
 
-        {!customersQuery.isLoading && !customersQuery.isError && sortedCustomers.length > 0 ? (
+        {!customersQuery.isLoading && !customersQuery.isError && customers.length > 0 ? (
           <>
             {viewMode === 'cards' ? (
               <div className="customers-card-grid">
-                {sortedCustomers.map((customer) => (
+                {customers.map((customer) => (
                   <button
                     key={customer.id}
                     className="customer-card tech-card"
@@ -522,7 +445,7 @@ export function CustomersPage() {
               <div className="customers-table-wrap">
                 <DataTable
                   columns={tableColumns}
-                  rows={sortedCustomers}
+                  rows={customers}
                   isLoading={customersQuery.isLoading}
                   loadingText={t('home.loading')}
                   emptyText={t('customers.states.emptySearchTitle')}

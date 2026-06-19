@@ -3,6 +3,7 @@ import { requireAuth, requirePermission } from '../auth/auth.middleware.js';
 import { asyncHandler } from '../../shared/http/asyncHandler.js';
 import { parseId } from '../../shared/http/ids.js';
 import { parsePagination } from '../../shared/http/pagination.js';
+import { resolveRequestLanguage } from '../../shared/localization/requestLanguage.js';
 import { SalesService } from './sales.service.js';
 import {
   invoiceApproveSchema,
@@ -29,6 +30,7 @@ router.get('/sales/invoices', requirePermission('sales.invoices.view'), asyncHan
     status: filters.status,
     dateFrom: filters.dateFrom,
     dateTo: filters.dateTo,
+    language: resolveRequestLanguage(req),
   });
 
   res.json({
@@ -44,16 +46,24 @@ router.get('/sales/invoices', requirePermission('sales.invoices.view'), asyncHan
 
 router.post('/sales/invoices', requirePermission('sales.invoices.create'), asyncHandler(async (req, res) => {
   const payload = invoiceCreateSchema.parse(req.body);
-  res.status(201).json({ invoice: await sales.createInvoice(payload, req.currentUser!.id, req.ip) });
+  res.status(201).json({ invoice: await sales.createInvoice(payload, req.currentUser!.id, req.ip, resolveRequestLanguage(req)) });
 }));
 
 router.get('/sales/invoices/:id', requirePermission('sales.invoices.view'), asyncHandler(async (req, res) => {
-  res.json({ invoice: await sales.getInvoice(parseId(req.params.id)) });
+  res.json({ invoice: await sales.getInvoice(parseId(req.params.id), resolveRequestLanguage(req)) });
 }));
 
 router.patch('/sales/invoices/:id', requirePermission('sales.invoices.view'), asyncHandler(async (req, res) => {
   const payload = invoiceUpdateSchema.parse(req.body);
-  res.json({ invoice: await sales.updateInvoicePrintContent(parseId(req.params.id), payload, req.currentUser!.id, req.ip) });
+  res.json({
+    invoice: await sales.updateInvoicePrintContent(
+      parseId(req.params.id),
+      payload,
+      req.currentUser!.id,
+      req.ip,
+      resolveRequestLanguage(req),
+    ),
+  });
 }));
 
 router.post('/sales/invoices/:id/approve', requirePermission('sales.invoices.approve'), asyncHandler(async (req, res) => {
@@ -69,13 +79,14 @@ router.post('/sales/invoices/:id/approve', requirePermission('sales.invoices.app
         paymentReference: payload.paymentReference ?? null,
       },
       req.ip,
+      resolveRequestLanguage(req),
     ),
   });
 }));
 
 router.post('/sales/invoices/:id/void', requirePermission('sales.invoices.void'), asyncHandler(async (req, res) => {
   invoiceVoidSchema.parse(req.body);
-  res.json({ invoice: await sales.voidInvoice(parseId(req.params.id), req.currentUser!.id, req.ip) });
+  res.json({ invoice: await sales.voidInvoice(parseId(req.params.id), req.currentUser!.id, req.ip, resolveRequestLanguage(req)) });
 }));
 
 router.post('/sales/returns', requirePermission('sales.returns.create'), asyncHandler(async (req, res) => {

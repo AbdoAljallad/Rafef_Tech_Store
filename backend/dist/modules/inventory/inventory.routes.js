@@ -3,6 +3,7 @@ import { requireAuth, requirePermission } from '../auth/auth.middleware.js';
 import { asyncHandler } from '../../shared/http/asyncHandler.js';
 import { parseId } from '../../shared/http/ids.js';
 import { parsePagination } from '../../shared/http/pagination.js';
+import { resolveRequestLanguage } from '../../shared/localization/requestLanguage.js';
 import { adjustmentCreateSchema, purchaseCreateSchema, reservationCreateSchema } from './inventory.schemas.js';
 import { PurchaseService } from './purchase.service.js';
 import { StockAdjustmentService } from './stockAdjustment.service.js';
@@ -22,6 +23,7 @@ router.get('/inventory/stock', requirePermission('inventory.stock.view'), asyncH
         search: typeof request.query.search === 'string' ? request.query.search : undefined,
         offset,
         limit: pageSize,
+        language: resolveRequestLanguage(request),
     });
     response.json({ items });
 }));

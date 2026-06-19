@@ -50,8 +50,8 @@ export class CreativeRepository {
          j.status,
          j.deadline_at AS deadline,
          j.created_at,
-         COALESCE(lines.line_count, 0) AS line_count,
-         COALESCE(tasks.vendor_task_count, 0) AS vendor_task_count
+         COALESCE(job_lines_agg.line_count, 0) AS line_count,
+         COALESCE(vendor_tasks_agg.vendor_task_count, 0) AS vendor_task_count
        FROM creative_jobs j
        LEFT JOIN creative_job_types jt ON jt.id = j.job_type_id
        LEFT JOIN crm_customers c ON c.id = j.customer_id
@@ -59,13 +59,13 @@ export class CreativeRepository {
          SELECT job_id, COUNT(*) AS line_count
          FROM creative_job_lines
          GROUP BY job_id
-       ) lines ON lines.job_id = j.id
+       ) AS job_lines_agg ON job_lines_agg.job_id = j.id
        LEFT JOIN (
          SELECT job_id, COUNT(*) AS vendor_task_count
          FROM creative_vendor_tasks
          GROUP BY job_id
-       ) tasks ON tasks.job_id = j.id
-       ORDER BY created_at DESC, id DESC`);
+       ) AS vendor_tasks_agg ON vendor_tasks_agg.job_id = j.id
+       ORDER BY j.created_at DESC, j.id DESC`);
         return rows;
     }
     async getJob(id) {

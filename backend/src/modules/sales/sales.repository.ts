@@ -1,12 +1,42 @@
 import type { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import { pool } from '../../database/mysql.js';
 import { AppError } from '../../shared/errors/AppError.js';
+import { normalizeUiLanguage, type UiLanguage } from '../../shared/localization/language.js';
+import { localizedFieldExpression } from '../../shared/localization/sql.js';
 import type {
   InvoiceDocumentType,
   InvoiceLineType,
   InvoiceStatus,
   InvoiceUpdateInput,
 } from './sales.schemas.js';
+
+const customerNameExpr = localizedFieldExpression({
+  entityType: 'crm_customers',
+  entityIdExpression: 'c.id',
+  fieldName: 'name',
+  fallbackExpression: 'c.name',
+});
+
+const productNameExpr = localizedFieldExpression({
+  entityType: 'catalog_products',
+  entityIdExpression: 'p.id',
+  fieldName: 'default_name',
+  fallbackExpression: 'p.default_name',
+});
+
+const categoryNameExpr = localizedFieldExpression({
+  entityType: 'catalog_categories',
+  entityIdExpression: 'cat.id',
+  fieldName: 'default_name',
+  fallbackExpression: 'cat.default_name',
+});
+
+const categoryNameFromCExpr = localizedFieldExpression({
+  entityType: 'catalog_categories',
+  entityIdExpression: 'c.id',
+  fieldName: 'default_name',
+  fallbackExpression: 'c.default_name',
+});
 
 type InvoiceHeaderRow = RowDataPacket & {
   id: number;
@@ -343,35 +373,36 @@ export class SalesRepository {
     return this.getInvoiceById(invoiceId);
   }
 
-  async getInvoiceById(id: number) {
-    const [rows] = await pool.execute<InvoiceHeaderRow[]>(
+  async getInvoiceById(id: number, language?: UiLanguage) {
+    const resolvedLanguage = normalizeUiLanguage(language);
+    const [rows] = await pool.query<InvoiceHeaderRow[]>(
       `SELECT
          i.*,
          c.customer_code,
-         c.name AS customer_name
+         ${customerNameExpr} AS customer_name
        FROM sales_invoices i
        LEFT JOIN crm_customers c ON c.id = i.customer_id
-       WHERE i.id = ?
+       WHERE i.id = :invoiceId
        LIMIT 1`,
-      [id],
+      { language: resolvedLanguage, invoiceId: id },
     );
     const invoice = rows[0];
     if (!invoice) {
       return null;
     }
 
-    const [lines] = await pool.execute<InvoiceLineRow[]>(
+    const [lines] = await pool.query<InvoiceLineRow[]>(
       `SELECT
          l.*,
-         COALESCE(l.description_snapshot, p.default_name, '') AS product_name,
+         COALESCE(l.description_snapshot, ${productNameExpr}, '') AS product_name,
          COALESCE(l.sku_snapshot, p.sku, '') AS product_sku,
-         COALESCE(l.category_name_snapshot, cat.default_name, '') AS category_name
+         COALESCE(l.category_name_snapshot, ${categoryNameExpr}, '') AS category_name
        FROM sales_invoice_lines l
        LEFT JOIN catalog_products p ON p.id = l.product_id
        LEFT JOIN catalog_categories cat ON cat.id = p.category_id
-       WHERE l.invoice_id = ?
+       WHERE l.invoice_id = :invoiceId
        ORDER BY l.id`,
-      [id],
+      { language: resolvedLanguage, invoiceId: id },
     );
 
     return { ...invoice, lines };
@@ -385,40 +416,54 @@ export class SalesRepository {
     status?: InvoiceStatus;
     dateFrom?: string;
     dateTo?: string;
+    language?: UiLanguage;
   } = {}) {
+    const resolvedLanguage = normalizeUiLanguage(params.language);
     const offset = Math.max(0, Math.floor(Number(params.offset ?? 0)));
     const limit = Math.max(1, Math.floor(Number(params.limit ?? 50)));
     const conditions = ['1 = 1'];
-    const values: Array<string | number> = [];
+    const values: Record<string, string | number> = { language: resolvedLanguage };
 
     if (params.search?.trim()) {
       const term = `%${params.search.trim()}%`;
-      conditions.push('(i.invoice_code LIKE ? OR c.name LIKE ? OR c.customer_code LIKE ?)');
-      values.push(term, term, term);
+      conditions.push(`(
+        i.invoice_code LIKE :searchTerm
+        OR c.name LIKE :searchTerm
+        OR c.customer_code LIKE :searchTerm
+        OR EXISTS (
+          SELECT 1
+          FROM entity_translations et
+          WHERE et.entity_type = 'crm_customers'
+            AND et.entity_id = c.id
+            AND et.field_name = 'name'
+            AND et.text_value LIKE :searchTerm
+        )
+      )`);
+      values.searchTerm = term;
     }
 
     if (params.documentType) {
-      conditions.push('i.document_type = ?');
-      values.push(params.documentType);
+      conditions.push('i.document_type = :documentType');
+      values.documentType = params.documentType;
     }
 
     if (params.status) {
-      conditions.push('i.status = ?');
-      values.push(params.status);
+      conditions.push('i.status = :status');
+      values.status = params.status;
     }
 
     if (params.dateFrom) {
-      conditions.push('DATE(i.created_at) >= ?');
-      values.push(params.dateFrom);
+      conditions.push('DATE(i.created_at) >= :dateFrom');
+      values.dateFrom = params.dateFrom;
     }
 
     if (params.dateTo) {
-      conditions.push('DATE(i.created_at) <= ?');
-      values.push(params.dateTo);
+      conditions.push('DATE(i.created_at) <= :dateTo');
+      values.dateTo = params.dateTo;
     }
 
     const whereClause = conditions.join(' AND ');
-    const [countRows] = await pool.execute<(RowDataPacket & { total: number })[]>(
+    const [countRows] = await pool.query<(RowDataPacket & { total: number })[]>(
       `SELECT COUNT(*) AS total
        FROM sales_invoices i
        LEFT JOIN crm_customers c ON c.id = i.customer_id
@@ -426,11 +471,11 @@ export class SalesRepository {
       values,
     );
 
-    const [rows] = await pool.execute<InvoiceListRow[]>(
+    const [rows] = await pool.query<InvoiceListRow[]>(
       `SELECT
          i.*,
          c.customer_code,
-         c.name AS customer_name,
+         ${customerNameExpr} AS customer_name,
          (
            SELECT COUNT(*)
            FROM sales_invoice_lines l
@@ -450,7 +495,7 @@ export class SalesRepository {
     };
   }
 
-  async updateInvoicePrintContent(id: number, input: InvoiceUpdateInput) {
+  async updateInvoicePrintContent(id: number, input: InvoiceUpdateInput, language?: UiLanguage) {
     await pool.execute(
       `UPDATE sales_invoices
        SET note_text = COALESCE(?, note_text),
@@ -468,34 +513,34 @@ export class SalesRepository {
         id,
       ],
     );
-    return this.getInvoiceById(id);
+    return this.getInvoiceById(id, language);
   }
 
-  async findProductPricing(productId: number) {
-    const [rows] = await pool.execute<ProductPricingRow[]>(
+  async findProductPricing(productId: number, language?: UiLanguage) {
+    const [rows] = await pool.query<ProductPricingRow[]>(
       `SELECT
          p.id,
          p.sku,
-         p.default_name,
+         ${productNameExpr} AS default_name,
          p.current_purchase_price,
          p.current_sale_price,
-         c.default_name AS category_name
+         ${categoryNameFromCExpr} AS category_name
        FROM catalog_products p
        INNER JOIN catalog_categories c ON c.id = p.category_id
-       WHERE p.id = ?
+       WHERE p.id = :productId
        LIMIT 1`,
-      [productId],
+      { language: normalizeUiLanguage(language), productId },
     );
     return rows[0] ?? null;
   }
 
-  async getRepairOrderHeader(orderId: number) {
-    const [rows] = await pool.execute<RepairOrderHeaderRow[]>(
+  async getRepairOrderHeader(orderId: number, language?: UiLanguage) {
+    const [rows] = await pool.query<RepairOrderHeaderRow[]>(
       `SELECT
          o.id,
          o.order_code,
          o.customer_id,
-         c.name AS customer_name,
+         ${customerNameExpr} AS customer_name,
          c.customer_code,
          o.device_id,
          d.device_name,
@@ -503,28 +548,28 @@ export class SalesRepository {
        FROM repair_orders o
        INNER JOIN crm_customers c ON c.id = o.customer_id
        INNER JOIN repair_devices d ON d.id = o.device_id
-       WHERE o.id = ?
+       WHERE o.id = :orderId
        LIMIT 1`,
-      [orderId],
+      { language: normalizeUiLanguage(language), orderId },
     );
     return rows[0] ?? null;
   }
 
-  async getProjectHeader(projectId: number) {
-    const [rows] = await pool.execute<ProjectHeaderRow[]>(
+  async getProjectHeader(projectId: number, language?: UiLanguage) {
+    const [rows] = await pool.query<ProjectHeaderRow[]>(
       `SELECT
          p.id,
          p.project_code,
          p.customer_id,
-         c.name AS customer_name,
+         ${customerNameExpr} AS customer_name,
          c.customer_code,
          p.title,
          p.status
        FROM projects p
        LEFT JOIN crm_customers c ON c.id = p.customer_id
-       WHERE p.id = ?
+       WHERE p.id = :projectId
        LIMIT 1`,
-      [projectId],
+      { language: normalizeUiLanguage(language), projectId },
     );
     return rows[0] ?? null;
   }
@@ -546,8 +591,8 @@ export class SalesRepository {
     return rows[0] ?? null;
   }
 
-  async findRepairPartBillable(repairOrderPartId: number) {
-    const [rows] = await pool.execute<RepairPartBillableRow[]>(
+  async findRepairPartBillable(repairOrderPartId: number, language?: UiLanguage) {
+    const [rows] = await pool.query<RepairPartBillableRow[]>(
       `SELECT
          p.id,
          p.repair_order_id,
@@ -559,21 +604,26 @@ export class SalesRepository {
          p.sales_invoice_id,
          cp.sku AS product_sku,
          cp.current_sale_price,
-         cc.default_name AS category_name,
+         ${localizedFieldExpression({
+           entityType: 'catalog_categories',
+           entityIdExpression: 'cc.id',
+           fieldName: 'default_name',
+           fallbackExpression: 'cc.default_name',
+         })} AS category_name,
          r.status AS reservation_status
        FROM repair_order_parts p
        INNER JOIN catalog_products cp ON cp.id = p.product_id
        INNER JOIN catalog_categories cc ON cc.id = cp.category_id
        LEFT JOIN inventory_stock_reservations r ON r.id = p.reservation_id
-       WHERE p.id = ?
+       WHERE p.id = :repairOrderPartId
        LIMIT 1`,
-      [repairOrderPartId],
+      { language: normalizeUiLanguage(language), repairOrderPartId },
     );
     return rows[0] ?? null;
   }
 
-  async findProjectMaterialBillable(projectMaterialId: number) {
-    const [rows] = await pool.execute<ProjectMaterialBillableRow[]>(
+  async findProjectMaterialBillable(projectMaterialId: number, language?: UiLanguage) {
+    const [rows] = await pool.query<ProjectMaterialBillableRow[]>(
       `SELECT
          m.id,
          m.project_id,
@@ -585,15 +635,15 @@ export class SalesRepository {
          m.sales_invoice_id,
          p.sku AS product_sku,
          p.current_sale_price,
-         c.default_name AS category_name,
+         ${categoryNameFromCExpr} AS category_name,
          r.status AS reservation_status
        FROM project_materials m
        INNER JOIN catalog_products p ON p.id = m.product_id
        INNER JOIN catalog_categories c ON c.id = p.category_id
        LEFT JOIN inventory_stock_reservations r ON r.id = m.reservation_id
-       WHERE m.id = ?
+       WHERE m.id = :projectMaterialId
        LIMIT 1`,
-      [projectMaterialId],
+      { language: normalizeUiLanguage(language), projectMaterialId },
     );
     return rows[0] ?? null;
   }

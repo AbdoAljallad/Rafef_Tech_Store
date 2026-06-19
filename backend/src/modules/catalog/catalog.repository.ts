@@ -1,6 +1,7 @@
 import type { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import { pool } from '../../database/mysql.js';
 import { AppError } from '../../shared/errors/AppError.js';
+import { normalizeUiLanguage, type UiLanguage } from '../../shared/localization/language.js';
 import type {
   CategoryCreateInput,
   PriceChangeInput,
@@ -32,6 +33,10 @@ export type ProductRow = RowDataPacket & {
   quantity_on_hand: string;
   quantity_reserved: string;
   quantity_available: string;
+  default_name_original?: string;
+  default_name_source_lang?: string | null;
+  category_name_original?: string;
+  category_name_source_lang?: string | null;
 };
 
 type ProductSupplierRow = RowDataPacket & {
@@ -58,12 +63,47 @@ const stockAvailabilitySelect = `
   GREATEST(COALESCE(sb.quantity_on_hand, 0) - COALESCE(sr.quantity_reserved_live, 0), 0) AS quantity_available
 `;
 
+const localizedProductJoin = `
+  LEFT JOIN entity_translations p_name_loc
+    ON p_name_loc.entity_type = 'catalog_products'
+    AND p_name_loc.entity_id = p.id
+    AND p_name_loc.field_name = 'default_name'
+    AND p_name_loc.lang_code = ?
+  LEFT JOIN entity_translations c_name_loc
+    ON c_name_loc.entity_type = 'catalog_categories'
+    AND c_name_loc.entity_id = c.id
+    AND c_name_loc.field_name = 'default_name'
+    AND c_name_loc.lang_code = ?
+`;
+
+const localizedServiceJoin = `
+  LEFT JOIN entity_translations s_name_loc
+    ON s_name_loc.entity_type = 'catalog_services'
+    AND s_name_loc.entity_id = s.id
+    AND s_name_loc.field_name = 'default_name'
+    AND s_name_loc.lang_code = ?
+  LEFT JOIN entity_translations c_name_loc
+    ON c_name_loc.entity_type = 'catalog_service_categories'
+    AND c_name_loc.entity_id = c.id
+    AND c_name_loc.field_name = 'default_name'
+    AND c_name_loc.lang_code = ?
+`;
+
+const localizedSupplierJoin = `
+  LEFT JOIN entity_translations s_name_loc
+    ON s_name_loc.entity_type = 'catalog_suppliers'
+    AND s_name_loc.entity_id = s.id
+    AND s_name_loc.field_name = 'name'
+    AND s_name_loc.lang_code = ?
+`;
+
 function nullable(value: string | number | null | undefined) {
   return value === undefined ? null : value;
 }
 
 export class CatalogRepository {
-  async listProducts(params: { search?: string; offset: number; limit: number }) {
+  async listProducts(params: { search?: string; offset: number; limit: number; language?: UiLanguage }) {
+    const language = normalizeUiLanguage(params.language);
     const search = params.search?.trim();
     const values: Array<string | number> = [];
     let where = 'WHERE p.is_active = TRUE';
@@ -75,18 +115,39 @@ export class CatalogRepository {
         OR c.default_name LIKE ?
         OR EXISTS (
           SELECT 1
+          FROM entity_translations et
+          WHERE et.entity_type = 'catalog_products'
+            AND et.entity_id = p.id
+            AND et.field_name = 'default_name'
+            AND et.text_value LIKE ?
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM entity_translations et
+          WHERE et.entity_type = 'catalog_categories'
+            AND et.entity_id = c.id
+            AND et.field_name = 'default_name'
+            AND et.text_value LIKE ?
+        )
+        OR EXISTS (
+          SELECT 1
           FROM catalog_product_barcodes b
           WHERE b.product_id = p.id AND b.barcode LIKE ?
         )
       )`;
       const like = `%${search}%`;
-      values.push(like, like, like, like);
+      values.push(like, like, like, like, like, like);
     }
 
     const [rows] = await pool.execute<ProductRow[]>(
       `SELECT
          p.*,
-         c.default_name AS category_name,
+         COALESCE(p_name_loc.text_value, p.default_name) AS default_name,
+         p.default_name AS default_name_original,
+         COALESCE(p_name_loc.source_lang_code, NULL) AS default_name_source_lang,
+         COALESCE(c_name_loc.text_value, c.default_name) AS category_name,
+         c.default_name AS category_name_original,
+         COALESCE(c_name_loc.source_lang_code, NULL) AS category_name_source_lang,
          c.code AS category_code,
          c.show_in_sales,
          c.show_in_repair,
@@ -101,19 +162,26 @@ export class CatalogRepository {
        LEFT JOIN catalog_product_barcodes pb ON pb.product_id = p.id AND pb.is_primary = TRUE
        LEFT JOIN inventory_stock_balances sb ON sb.product_id = p.id
        ${liveReservationJoin}
+       ${localizedProductJoin}
        ${where}
        ORDER BY p.created_at DESC
        LIMIT ${params.limit} OFFSET ${params.offset}`,
-      values,
+      [language, language, ...values],
     );
     return rows;
   }
 
-  async findProductById(id: number) {
+  async findProductById(id: number, language?: UiLanguage) {
+    const resolvedLanguage = normalizeUiLanguage(language);
     const [rows] = await pool.execute<ProductRow[]>(
       `SELECT
          p.*,
-         c.default_name AS category_name,
+         COALESCE(p_name_loc.text_value, p.default_name) AS default_name,
+         p.default_name AS default_name_original,
+         COALESCE(p_name_loc.source_lang_code, NULL) AS default_name_source_lang,
+         COALESCE(c_name_loc.text_value, c.default_name) AS category_name,
+         c.default_name AS category_name_original,
+         COALESCE(c_name_loc.source_lang_code, NULL) AS category_name_source_lang,
          c.code AS category_code,
          c.show_in_sales,
          c.show_in_repair,
@@ -128,18 +196,25 @@ export class CatalogRepository {
        LEFT JOIN catalog_product_barcodes pb ON pb.product_id = p.id AND pb.is_primary = TRUE
        LEFT JOIN inventory_stock_balances sb ON sb.product_id = p.id
        ${liveReservationJoin}
+       ${localizedProductJoin}
        WHERE p.id = ?
        LIMIT 1`,
-      [id],
+      [resolvedLanguage, resolvedLanguage, id],
     );
     return rows[0] ?? null;
   }
 
-  async findProductByBarcode(barcode: string) {
+  async findProductByBarcode(barcode: string, language?: UiLanguage) {
+    const resolvedLanguage = normalizeUiLanguage(language);
     const [rows] = await pool.execute<ProductRow[]>(
       `SELECT
          p.*,
-         c.default_name AS category_name,
+         COALESCE(p_name_loc.text_value, p.default_name) AS default_name,
+         p.default_name AS default_name_original,
+         COALESCE(p_name_loc.source_lang_code, NULL) AS default_name_source_lang,
+         COALESCE(c_name_loc.text_value, c.default_name) AS category_name,
+         c.default_name AS category_name_original,
+         COALESCE(c_name_loc.source_lang_code, NULL) AS category_name_source_lang,
          c.code AS category_code,
          c.show_in_sales,
          c.show_in_repair,
@@ -154,14 +229,15 @@ export class CatalogRepository {
        INNER JOIN catalog_units u ON u.id = p.unit_id
        LEFT JOIN inventory_stock_balances sb ON sb.product_id = p.id
        ${liveReservationJoin}
+       ${localizedProductJoin}
        WHERE b.barcode = ? AND p.is_active = TRUE
        LIMIT 1`,
-      [barcode],
+      [resolvedLanguage, resolvedLanguage, barcode],
     );
     return rows[0] ?? null;
   }
 
-  async createProduct(input: ProductCreateInput, userId: number) {
+  async createProduct(input: ProductCreateInput, userId: number, language?: UiLanguage) {
     const [result] = await pool.execute<ResultSetHeader>(
       `INSERT INTO catalog_products (
          category_id, unit_id, sku, default_name, tracking_type,
@@ -191,10 +267,10 @@ export class CatalogRepository {
       [result.insertId],
     );
 
-    return this.findProductById(result.insertId);
+    return this.findProductById(result.insertId, language);
   }
 
-  async updateProduct(id: number, input: ProductUpdateInput, userId: number) {
+  async updateProduct(id: number, input: ProductUpdateInput, userId: number, language?: UiLanguage) {
     await pool.execute(
       `UPDATE catalog_products
        SET category_id = COALESCE(?, category_id),
@@ -220,11 +296,11 @@ export class CatalogRepository {
         id,
       ],
     );
-    return this.findProductById(id);
+    return this.findProductById(id, language);
   }
 
-  async changePrice(id: number, input: PriceChangeInput, userId: number) {
-    const before = await this.findProductById(id);
+  async changePrice(id: number, input: PriceChangeInput, userId: number, language?: UiLanguage) {
+    const before = await this.findProductById(id, language);
     if (!before) return null;
 
     await pool.execute(
@@ -248,12 +324,26 @@ export class CatalogRepository {
        WHERE id = ?`,
       [input.newPurchasePrice, input.newSalePrice, userId, id],
     );
-    return this.findProductById(id);
+    return this.findProductById(id, language);
   }
 
-  async listCategories() {
-    const [rows] = await pool.query<RowDataPacket[]>(
-      'SELECT * FROM catalog_categories WHERE is_active = TRUE ORDER BY default_name',
+  async listCategories(language?: UiLanguage) {
+    const resolvedLanguage = normalizeUiLanguage(language);
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT
+         c.*,
+         COALESCE(c_name_loc.text_value, c.default_name) AS default_name,
+         c.default_name AS default_name_original,
+         COALESCE(c_name_loc.source_lang_code, NULL) AS default_name_source_lang
+       FROM catalog_categories c
+       LEFT JOIN entity_translations c_name_loc
+         ON c_name_loc.entity_type = 'catalog_categories'
+         AND c_name_loc.entity_id = c.id
+         AND c_name_loc.field_name = 'default_name'
+         AND c_name_loc.lang_code = ?
+       WHERE c.is_active = TRUE
+       ORDER BY default_name`,
+      [resolvedLanguage],
     );
     return rows;
   }
@@ -283,7 +373,8 @@ export class CatalogRepository {
     return rows;
   }
 
-  async listServices(module?: string) {
+  async listServices(module?: string, language?: UiLanguage) {
+    const resolvedLanguage = normalizeUiLanguage(language);
     const values: string[] = [];
     let where = 'WHERE s.is_active = TRUE';
     if (module) {
@@ -291,50 +382,82 @@ export class CatalogRepository {
       values.push(module);
     }
     const [rows] = await pool.execute<RowDataPacket[]>(
-      `SELECT s.*, c.default_name AS category_name
+      `SELECT
+         s.*,
+         COALESCE(s_name_loc.text_value, s.default_name) AS default_name,
+         s.default_name AS default_name_original,
+         COALESCE(s_name_loc.source_lang_code, NULL) AS default_name_source_lang,
+         COALESCE(c_name_loc.text_value, c.default_name) AS category_name,
+         c.default_name AS category_name_original
        FROM catalog_services s
        INNER JOIN catalog_service_categories c ON c.id = s.service_category_id
+       ${localizedServiceJoin}
        ${where}
        ORDER BY s.module, s.default_name`,
-      values,
+      [resolvedLanguage, resolvedLanguage, ...values],
     );
     return rows;
   }
 
-  async listSuppliers() {
-    const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT *
+  async listSuppliers(language?: UiLanguage) {
+    const resolvedLanguage = normalizeUiLanguage(language);
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT
+         s.*,
+         COALESCE(s_name_loc.text_value, s.name) AS name,
+         s.name AS name_original,
+         COALESCE(s_name_loc.source_lang_code, NULL) AS name_source_lang
        FROM catalog_suppliers
-       WHERE is_active = TRUE
+       AS s
+       ${localizedSupplierJoin}
+       WHERE s.is_active = TRUE
        ORDER BY name ASC, id DESC`,
+      [resolvedLanguage],
     );
     return rows;
   }
 
-  async createSupplier(input: SupplierCreateInput, userId: number) {
+  async createSupplier(input: SupplierCreateInput, userId: number, language?: UiLanguage) {
     const [result] = await pool.execute<ResultSetHeader>(
       `INSERT INTO catalog_suppliers (name, phone, email, address_text, notes, created_by_user_id)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [input.name, nullable(input.phone), nullable(input.email), nullable(input.addressText), nullable(input.notes), userId],
     );
-    const [rows] = await pool.execute<RowDataPacket[]>('SELECT * FROM catalog_suppliers WHERE id = ?', [result.insertId]);
+    const resolvedLanguage = normalizeUiLanguage(language);
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT
+         s.*,
+         COALESCE(s_name_loc.text_value, s.name) AS name,
+         s.name AS name_original,
+         COALESCE(s_name_loc.source_lang_code, NULL) AS name_source_lang
+       FROM catalog_suppliers s
+       ${localizedSupplierJoin}
+       WHERE s.id = ?`,
+      [resolvedLanguage, result.insertId],
+    );
     return rows[0];
   }
 
-  async listProductSuppliers(productId: number) {
+  async listProductSuppliers(productId: number, language?: UiLanguage) {
+    const resolvedLanguage = normalizeUiLanguage(language);
     const [rows] = await pool.execute<ProductSupplierRow[]>(
       `SELECT
          ps.supplier_id,
-         s.name AS supplier_name,
+         COALESCE(s_name_loc.text_value, s.name) AS supplier_name,
          s.phone AS supplier_phone,
          s.email AS supplier_email,
          ps.supplier_sku,
          ps.last_purchase_price
        FROM catalog_product_suppliers ps
        INNER JOIN catalog_suppliers s ON s.id = ps.supplier_id
+       LEFT JOIN entity_translations s_name_loc
+         ON s_name_loc.entity_type = 'catalog_suppliers'
+         AND s_name_loc.entity_id = s.id
+         AND s_name_loc.field_name = 'name'
+         AND s_name_loc.lang_code = ?
        WHERE ps.product_id = ?
        ORDER BY s.name ASC`,
-      [productId],
+      [resolvedLanguage, productId],
     );
     return rows;
   }

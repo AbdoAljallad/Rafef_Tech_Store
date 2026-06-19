@@ -25,7 +25,16 @@ function requireIntegrationSecret(secretName) {
         next();
     };
 }
-router.post('/integrations/n8n/inbound', requireIntegrationSecret('N8N_SHARED_SECRET'), asyncHandler(async (req, res) => {
+function requireIntegrationEnabled(flagName, integrationName) {
+    return (_req, _res, next) => {
+        if (!env[flagName]) {
+            next(new AppError(503, 'INTEGRATION_DISABLED', `${integrationName} integration is disabled`));
+            return;
+        }
+        next();
+    };
+}
+router.post('/integrations/n8n/inbound', requireIntegrationEnabled('N8N_ENABLED', 'n8n'), requireIntegrationSecret('N8N_SHARED_SECRET'), asyncHandler(async (req, res) => {
     res.status(202).json({ event: integrations.acceptN8nInbound(req.body) });
 }));
 router.use(requireAuth);
@@ -39,7 +48,7 @@ router.post('/integrations/webhook-outbox/process', requirePermission('integrati
     const input = processOutboxSchema.parse(req.body ?? {});
     res.json({ result: await integrations.processOutbox(input.limit) });
 }));
-router.post('/integrations/n8n/test', requirePermission('integrations.manage'), asyncHandler(async (req, res) => {
+router.post('/integrations/n8n/test', requirePermission('integrations.manage'), requireIntegrationEnabled('N8N_ENABLED', 'n8n'), asyncHandler(async (req, res) => {
     res.status(202).json({ event: await integrations.enqueueN8nTest(req.currentUser.id) });
 }));
 export { router as integrationsRouter };

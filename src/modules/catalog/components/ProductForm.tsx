@@ -25,7 +25,7 @@ export function ProductForm({ product, categories, units, onSubmit, isSubmitting
       categoryId: product?.category_id ?? categories[0]?.id ?? 0,
       unitId: product?.unit_id ?? units[0]?.id ?? 0,
       sku: product?.sku ?? '',
-      defaultName: product?.default_name ?? '',
+      defaultName: product?.default_name_original ?? product?.default_name ?? '',
       trackingType: product?.tracking_type ?? 'quantity',
       currentPurchasePrice: Number(product?.current_purchase_price ?? 0),
       currentSalePrice: Number(product?.current_sale_price ?? 0),
