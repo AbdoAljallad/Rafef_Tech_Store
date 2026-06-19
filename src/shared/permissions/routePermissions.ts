@@ -16,7 +16,7 @@ export const MODULE_NAV_ITEMS: ModuleNavItem[] = [
   { key: 'creative', path: '/creative/jobs', permission: PERMISSIONS.CREATIVE_JOBS_VIEW },
   { key: 'projects', path: '/projects', permission: PERMISSIONS.PROJECTS_VIEW },
   { key: 'events', path: '/events', permission: PERMISSIONS.EVENTS_VIEW },
-  { key: 'reports', path: '/reports', permission: PERMISSIONS.REPORTS_SALES_VIEW },
+  { key: 'reports', path: '/reports' },
   { key: 'settings', path: '/settings' },
   { key: 'integrations', path: '/integrations/health', permission: PERMISSIONS.INTEGRATIONS_VIEW },
 ];
